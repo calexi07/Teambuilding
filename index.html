@@ -307,6 +307,108 @@
             transform: translateY(0);
         }
 
+        .leaderboard-section {
+            width: 100%;
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .leaderboard-title {
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .leaderboard-item {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-item:hover {
+            transform: translateX(3px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .leaderboard-item.first {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6 0%, #fffaf0 100%);
+        }
+
+        .leaderboard-item.second {
+            border-left-color: #c0c0c0;
+        }
+
+        .leaderboard-item.third {
+            border-left-color: #cd7f32;
+        }
+
+        .leaderboard-info {
+            flex: 1;
+            text-align: left;
+        }
+
+        .leaderboard-rank {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 12px;
+        }
+
+        .leaderboard-title-text {
+            font-size: 1em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .leaderboard-details {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .leaderboard-score {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 10px;
+        }
+
+        .delete-button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delete-button:hover {
+            background: #cc0000;
+            transform: scale(1.05);
+        }
+
+        .no-scores {
+            color: #999;
+            font-style: italic;
+            padding: 15px;
+        }
+
         .thank-you {
             display: none;
             background: #4CAF50;
@@ -511,6 +613,14 @@
                 <button class="reset-button" onclick="resetVotes()">🔄 Resetare Scoruri</button>
                 <button class="save-score-button" onclick="saveScore()">💾 Salvează Punctaj</button>
                 <button class="live-button" onclick="openLivePage()">📺 Live</button>
+            </div>
+
+            <!-- Leaderboard Section -->
+            <div class="leaderboard-section" id="leaderboard-section">
+                <h3 class="leaderboard-title">🏆 Clasament Punctaje</h3>
+                <div id="leaderboard-list" class="leaderboard-list">
+                    <p class="no-scores">Niciun punctaj salvat încă</p>
+                </div>
             </div>
         </div>
 
@@ -845,6 +955,7 @@
                     const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
                     leaderboard.push(scoreEntry);
                     localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+                    await loadLeaderboard();
                 }
 
                 alert(`Punctaj salvat: ${scoreEntry.percentage}% (${data.total} voturi)`);
@@ -888,14 +999,113 @@
                     }
                 }
             });
+
+            // Listen for leaderboard changes
+            database.ref('leaderboard').on('value', (snapshot) => {
+                const data = snapshot.val();
+                let leaderboardData = [];
+                
+                if (data) {
+                    leaderboardData = Object.keys(data).map(key => ({
+                        id: key,
+                        ...data[key]
+                    }));
+                }
+                
+                displayLeaderboard(leaderboardData);
+            });
         } else if (!isVotingPage) {
             // Fallback: poll for updates if not using Firebase
             setInterval(updateDisplay, 2000);
+            setInterval(loadLeaderboard, 2000);
+        }
+
+        // Load and display leaderboard
+        async function loadLeaderboard() {
+            try {
+                let leaderboardData = [];
+
+                if (isFirebaseConfigured && database) {
+                    const snapshot = await database.ref('leaderboard').once('value');
+                    const data = snapshot.val();
+                    
+                    if (data) {
+                        leaderboardData = Object.keys(data).map(key => ({
+                            id: key,
+                            ...data[key]
+                        }));
+                    }
+                } else {
+                    const stored = localStorage.getItem('leaderboard');
+                    if (stored) {
+                        leaderboardData = JSON.parse(stored);
+                    }
+                }
+
+                displayLeaderboard(leaderboardData);
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+
+        // Display leaderboard
+        function displayLeaderboard(data) {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            
+            if (!data || data.length === 0) {
+                leaderboardList.innerHTML = '<p class="no-scores">Niciun punctaj salvat încă</p>';
+                return;
+            }
+
+            // Sort by percentage (descending)
+            data.sort((a, b) => b.percentage - a.percentage);
+
+            let html = '';
+            data.forEach((item, index) => {
+                const rankClass = index === 0 ? 'first' : index === 1 ? 'second' : index === 2 ? 'third' : '';
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                
+                html += `
+                    <div class="leaderboard-item ${rankClass}">
+                        <span class="leaderboard-rank">${rankEmoji}</span>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-title-text">${item.title}</div>
+                            <div class="leaderboard-details">${item.total} voturi • ${item.date}</div>
+                        </div>
+                        <div class="leaderboard-score">${item.percentage}%</div>
+                        <button class="delete-button" onclick="deleteScore('${item.id}')">✕</button>
+                    </div>
+                `;
+            });
+
+            leaderboardList.innerHTML = html;
+        }
+
+        // Delete score from leaderboard
+        async function deleteScore(scoreId) {
+            if (confirm('Sigur vrei să ștergi acest punctaj?')) {
+                try {
+                    if (isFirebaseConfigured && database) {
+                        await database.ref(`leaderboard/${scoreId}`).remove();
+                    } else {
+                        const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+                        const filtered = leaderboard.filter((_, index) => index.toString() !== scoreId);
+                        localStorage.setItem('leaderboard', JSON.stringify(filtered));
+                        loadLeaderboard();
+                    }
+                } catch (error) {
+                    console.error('Error deleting score:', error);
+                    alert('A apărut o eroare la ștergere.');
+                }
+            }
         }
 
         // Initialize
         updateDisplay();
         loadEventInfo();
+        if (!isVotingPage) {
+            loadLeaderboard();
+        }
     </script>
 </body>
 </html>
