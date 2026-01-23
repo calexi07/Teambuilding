@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live - Sistem de Votare</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .event-header {
+            margin-bottom: 30px;
+        }
+
+        .event-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .event-description {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+
+        .waiting-message {
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .waiting-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .waiting-message h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .live-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .score-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 60px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .score-label {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .score-value {
+            font-size: 5em;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+        }
+
+        .votes-count {
+            font-size: 1em;
+            margin-top: 15px;
+            opacity: 0.8;
+        }
+
+        .qr-section {
+            text-align: center;
+        }
+
+        #qrcode {
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .qr-instruction {
+            margin-top: 15px;
+            color: #666;
+            font-size: 1em;
+            font-weight: 500;
+        }
+
+        .leaderboard-section {
+            width: 100%;
+            margin-top: 40px;
+        }
+
+        .leaderboard-title {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .leaderboard-item {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 15px 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .leaderboard-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .leaderboard-item.first {
+            border-left-color: #ffd700;
+            background: linear-gradient(135deg, #fff9e6 0%, #fffaf0 100%);
+        }
+
+        .leaderboard-item.second {
+            border-left-color: #c0c0c0;
+        }
+
+        .leaderboard-item.third {
+            border-left-color: #cd7f32;
+        }
+
+        .leaderboard-info {
+            flex: 1;
+            text-align: left;
+        }
+
+        .leaderboard-rank {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 15px;
+        }
+
+        .leaderboard-title-text {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .leaderboard-details {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .leaderboard-score {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .no-scores {
+            color: #999;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+
+            .event-title {
+                font-size: 1.8em;
+            }
+
+            .event-description {
+                font-size: 1em;
+            }
+
+            .score-value {
+                font-size: 4em;
+            }
+
+            .score-container {
+                padding: 30px 40px;
+            }
+
+            #qrcode {
+                padding: 15px;
+            }
+
+            .waiting-message h2 {
+                font-size: 1.5em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .event-title {
+                font-size: 1.5em;
+            }
+
+            .score-value {
+                font-size: 3em;
+            }
+
+            .score-container {
+                padding: 25px 30px;
+            }
+
+            .waiting-icon {
+                font-size: 4em;
+            }
+
+            .waiting-message h2 {
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="event-header">
+            <h1 class="event-title" id="event-title">Votează acum!</h1>
+            <p class="event-description" id="event-description"></p>
+        </div>
+
+        <!-- Waiting message - shown when no event info -->
+        <div id="waiting-message" class="waiting-message">
+            <div class="waiting-icon">📱</div>
+            <h2>Pregătiți-vă telefoanele pentru a vota</h2>
+        </div>
+
+        <!-- Content - shown after event info is set -->
+        <div id="live-content" class="live-content" style="display: none;">
+            <div class="score-container">
+                <div class="score-label">Punctaj</div>
+                <div class="score-value" id="average-score">0%</div>
+                <div class="votes-count" id="total-votes">0 voturi</div>
+            </div>
+
+            <div class="qr-section">
+                <div id="qrcode"></div>
+                <p class="qr-instruction">Scanează pentru a vota</p>
+            </div>
+
+            <!-- Leaderboard Section -->
+            <div class="leaderboard-section" id="leaderboard-section">
+                <h2 class="leaderboard-title">🏆 Clasament Punctaje Salvate</h2>
+                <div id="leaderboard-list" class="leaderboard-list">
+                    <p class="no-scores">Niciun punctaj salvat încă</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIvVlYGERVAxAWMn_-TcX7UNWoU0vgIlI",
+            authDomain: "test-5a0b6.firebaseapp.com",
+            databaseURL: "https://test-5a0b6-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "test-5a0b6",
+            storageBucket: "test-5a0b6.firebasestorage.app",
+            messagingSenderId: "359812892398",
+            appId: "1:359812892398:web:08c911657f92e4193855ff",
+            measurementId: "G-5JL4BNZ3Y0"
+        };
+
+        let database = null;
+        let isFirebaseConfigured = false;
+
+        // Initialize Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            isFirebaseConfigured = true;
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+        }
+
+        // ⚠️ IMPORTANT: DUPĂ CE ÎNCĂRCI PE GITHUB PAGES, ÎNLOCUIEȘTE LINIA DE MAI JOS
+        // Cu URL-ul tău complet, exemplu:
+        // const votingUrl = 'https://username.github.io/voting-system/voting-system-final.html?vote=true';
+        
+        // Get voting URL - ÎNLOCUIEȘTE ACEASTĂ LINIE CU URL-UL TĂU GITHUB PAGES
+        const votingUrl = window.location.origin + window.location.pathname.replace('voting-live.html', 'voting-system-final.html') + '?vote=true';
+
+        let qrCodeGenerated = false;
+
+        // Generate QR code
+        function generateQRCode() {
+            if (!qrCodeGenerated) {
+                new QRCode(document.getElementById("qrcode"), {
+                    text: votingUrl,
+                    width: 256,
+                    height: 256,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                qrCodeGenerated = true;
+            }
+        }
+
+        // Show/hide content based on event info
+        function toggleContent(hasEventInfo) {
+            const waitingMessage = document.getElementById('waiting-message');
+            const liveContent = document.getElementById('live-content');
+            
+            if (hasEventInfo) {
+                waitingMessage.style.display = 'none';
+                liveContent.style.display = 'flex';
+                generateQRCode();
+            } else {
+                waitingMessage.style.display = 'block';
+                liveContent.style.display = 'none';
+            }
+        }
+
+        // Load event info
+        async function loadEventInfo() {
+            try {
+                if (isFirebaseConfigured && database) {
+                    const snapshot = await database.ref('eventInfo').once('value');
+                    const eventInfo = snapshot.val();
+                    
+                    if (eventInfo && eventInfo.title) {
+                        document.getElementById('event-title').textContent = eventInfo.title;
+                        document.getElementById('event-description').textContent = eventInfo.description || '';
+                        toggleContent(true);
+                    } else {
+                        toggleContent(false);
+                    }
+                } else {
+                    const stored = localStorage.getItem('eventInfo');
+                    if (stored) {
+                        const eventInfo = JSON.parse(stored);
+                        if (eventInfo.title) {
+                            document.getElementById('event-title').textContent = eventInfo.title;
+                            document.getElementById('event-description').textContent = eventInfo.description || '';
+                            toggleContent(true);
+                        } else {
+                            toggleContent(false);
+                        }
+                    } else {
+                        toggleContent(false);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading event info:', error);
+                toggleContent(false);
+            }
+        }
+
+        // Listen for event info changes
+        if (isFirebaseConfigured && database) {
+            database.ref('eventInfo').on('value', (snapshot) => {
+                const eventInfo = snapshot.val();
+                if (eventInfo && eventInfo.title) {
+                    document.getElementById('event-title').textContent = eventInfo.title;
+                    document.getElementById('event-description').textContent = eventInfo.description || '';
+                    toggleContent(true);
+                } else {
+                    toggleContent(false);
+                }
+            });
+        }
+
+        // Listen for voting data changes
+        if (isFirebaseConfigured && database) {
+            database.ref('votes').on('value', (snapshot) => {
+                const data = snapshot.val();
+                
+                if (data) {
+                    // Convert score to percentage (scale from 10)
+                    const percentage = Math.round((parseFloat(data.average) || 0) * 10);
+                    document.getElementById('average-score').textContent = percentage + '%';
+                    document.getElementById('total-votes').textContent = `${data.total || 0} ${data.total === 1 ? 'vot' : 'voturi'}`;
+                } else {
+                    document.getElementById('average-score').textContent = '0%';
+                    document.getElementById('total-votes').textContent = '0 voturi';
+                }
+            });
+        }
+
+        // Initialize
+        loadEventInfo();
+        loadLeaderboard();
+
+        // Load and display leaderboard
+        async function loadLeaderboard() {
+            try {
+                let leaderboardData = [];
+
+                if (isFirebaseConfigured && database) {
+                    const snapshot = await database.ref('leaderboard').once('value');
+                    const data = snapshot.val();
+                    
+                    if (data) {
+                        leaderboardData = Object.keys(data).map(key => ({
+                            id: key,
+                            ...data[key]
+                        }));
+                    }
+                } else {
+                    const stored = localStorage.getItem('leaderboard');
+                    if (stored) {
+                        leaderboardData = JSON.parse(stored);
+                    }
+                }
+
+                displayLeaderboard(leaderboardData);
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+
+        // Display leaderboard
+        function displayLeaderboard(data) {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            
+            if (!data || data.length === 0) {
+                leaderboardList.innerHTML = '<p class="no-scores">Niciun punctaj salvat încă</p>';
+                return;
+            }
+
+            // Sort by percentage (descending)
+            data.sort((a, b) => b.percentage - a.percentage);
+
+            let html = '';
+            data.forEach((item, index) => {
+                const rankClass = index === 0 ? 'first' : index === 1 ? 'second' : index === 2 ? 'third' : '';
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                
+                html += `
+                    <div class="leaderboard-item ${rankClass}">
+                        <span class="leaderboard-rank">${rankEmoji}</span>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-title-text">${item.title}</div>
+                            <div class="leaderboard-details">${item.total} voturi • ${item.date}</div>
+                        </div>
+                        <div class="leaderboard-score">${item.percentage}%</div>
+                    </div>
+                `;
+            });
+
+            leaderboardList.innerHTML = html;
+        }
+
+        // Listen for leaderboard changes
+        if (isFirebaseConfigured && database) {
+            database.ref('leaderboard').on('value', (snapshot) => {
+                const data = snapshot.val();
+                let leaderboardData = [];
+                
+                if (data) {
+                    leaderboardData = Object.keys(data).map(key => ({
+                        id: key,
+                        ...data[key]
+                    }));
+                }
+                
+                displayLeaderboard(leaderboardData);
+            });
+        }
+    </script>
+</body>
+</html>
