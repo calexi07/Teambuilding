@@ -328,12 +328,8 @@
             console.error('Firebase initialization error:', error);
         }
 
-        // ⚠️ IMPORTANT: DUPĂ CE ÎNCĂRCI PE GITHUB PAGES, ÎNLOCUIEȘTE LINIA DE MAI JOS
-        // Cu URL-ul tău complet, exemplu:
-        // const votingUrl = 'https://username.github.io/voting-system/voting-system-final.html?vote=true';
-        
-        // Get voting URL - ÎNLOCUIEȘTE ACEASTĂ LINIE CU URL-UL TĂU GITHUB PAGES
-        const votingUrl = window.location.origin + window.location.pathname.replace('voting-live.html', 'voting-system-final.html') + '?vote=true';
+        // Get voting URL - Hardcoded pentru GitHub Pages
+        const votingUrl = 'https://calexi07.github.io/Teambuilding/index.html?vote=true';
 
         let qrCodeGenerated = false;
 
