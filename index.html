@@ -622,6 +622,37 @@
         // Vote function
         async function vote(stars) {
             try {
+                // Get current session
+                let currentSession;
+                if (isFirebaseConfigured && database) {
+                    const sessionSnapshot = await database.ref('currentSession').once('value');
+                    currentSession = sessionSnapshot.val();
+                } else {
+                    currentSession = localStorage.getItem('currentSession');
+                }
+
+                if (!currentSession) {
+                    alert('Nu există o sesiune activă de votare.');
+                    return;
+                }
+
+                // Check if device already voted in this session
+                const deviceId = getDeviceId();
+                const voteKey = `voted_${currentSession}_${deviceId}`;
+                
+                if (isFirebaseConfigured && database) {
+                    const voteCheck = await database.ref(`deviceVotes/${voteKey}`).once('value');
+                    if (voteCheck.val()) {
+                        alert('Ai votat deja pentru această sesiune! Așteaptă următoarea rundă.');
+                        return;
+                    }
+                } else {
+                    if (localStorage.getItem(voteKey)) {
+                        alert('Ai votat deja pentru această sesiune! Așteaptă următoarea rundă.');
+                        return;
+                    }
+                }
+
                 const data = await loadData();
                 
                 // Update votes
@@ -638,6 +669,13 @@
                 // Save data
                 await saveData(data);
 
+                // Mark device as voted for this session
+                if (isFirebaseConfigured && database) {
+                    await database.ref(`deviceVotes/${voteKey}`).set(true);
+                } else {
+                    localStorage.setItem(voteKey, 'true');
+                }
+
                 // Show thank you
                 document.getElementById('thank-you').classList.add('show');
                 
@@ -649,6 +687,16 @@
                 console.error('Error voting:', error);
                 alert('A apărut o eroare. Te rugăm să încerci din nou.');
             }
+        }
+
+        // Generate or get device ID
+        function getDeviceId() {
+            let deviceId = localStorage.getItem('deviceId');
+            if (!deviceId) {
+                deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('deviceId', deviceId);
+            }
+            return deviceId;
         }
 
         // Reset votes function
@@ -677,19 +725,29 @@
             }
 
             try {
+                // Generate new session ID for this event
+                const sessionId = 'session_' + Date.now();
+                
                 const eventInfo = {
                     title: title,
                     description: description,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    sessionId: sessionId
                 };
 
                 if (isFirebaseConfigured && database) {
+                    // Save event info with new session
                     await database.ref('eventInfo').set(eventInfo);
+                    await database.ref('currentSession').set(sessionId);
+                    // Reset votes for new session
+                    await database.ref('votes').set(getDefaultData());
                 } else {
                     localStorage.setItem('eventInfo', JSON.stringify(eventInfo));
+                    localStorage.setItem('currentSession', sessionId);
+                    localStorage.setItem('votingData', JSON.stringify(getDefaultData()));
                 }
 
-                alert('Informațiile au fost salvate cu succes!');
+                alert('Informațiile au fost salvate cu succes! Nou cod QR generat.');
             } catch (error) {
                 console.error('Error saving event info:', error);
                 alert('A apărut o eroare la salvare.');
@@ -729,18 +787,29 @@
 
         // Reset event info
         async function resetEventInfo() {
-            if (confirm('Sigur vrei să resetezi titlul și descrierea?')) {
+            if (confirm('Sigur vrei să resetezi titlul și descrierea? Acest lucru va șterge și voturile curente.')) {
                 try {
+                    // Generate new session ID
+                    const newSessionId = 'session_' + Date.now();
+                    
                     if (isFirebaseConfigured && database) {
+                        // Remove event info and votes
                         await database.ref('eventInfo').remove();
+                        await database.ref('votes').remove();
+                        await database.ref('currentSession').set(newSessionId);
                     } else {
                         localStorage.removeItem('eventInfo');
+                        localStorage.removeItem('votingData');
+                        localStorage.setItem('currentSession', newSessionId);
                     }
 
                     document.getElementById('event-title').value = '';
                     document.getElementById('event-description').value = '';
                     
-                    alert('Informațiile au fost resetate cu succes!');
+                    // Reload to update display
+                    await updateDisplay();
+                    
+                    alert('Informațiile și voturile au fost resetate cu succes!');
                 } catch (error) {
                     console.error('Error resetting event info:', error);
                     alert('A apărut o eroare la resetare.');
