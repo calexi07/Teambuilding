@@ -17,7 +17,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -57,7 +57,7 @@
         }
 
         .score-container {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             color: white;
             padding: 30px;
             border-radius: 15px;
@@ -98,7 +98,7 @@
         .star-count {
             font-size: 1.5em;
             font-weight: bold;
-            color: #667eea;
+            color: #00A651;
             margin-bottom: 5px;
         }
 
@@ -116,6 +116,18 @@
             display: block;
         }
 
+        .krka-branding {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
         .stars-buttons {
             display: flex;
             justify-content: center;
@@ -125,7 +137,7 @@
         }
 
         .star-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             color: white;
             border: none;
             padding: 12px 18px;
@@ -133,13 +145,13 @@
             font-size: 1.3em;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 166, 81, 0.4);
             min-width: 50px;
         }
 
         .star-button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 6px 20px rgba(0, 166, 81, 0.6);
         }
 
         .star-button:active {
@@ -176,7 +188,7 @@
         }
 
         .live-button {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             color: white;
             border: none;
             padding: 12px 30px;
@@ -185,14 +197,14 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 166, 81, 0.4);
             margin-top: 20px;
             margin-left: 10px;
         }
 
         .live-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+            box-shadow: 0 6px 20px rgba(0, 166, 81, 0.6);
         }
 
         .live-button:active {
@@ -242,7 +254,7 @@
         }
 
         .save-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             color: white;
             border: none;
             padding: 10px 25px;
@@ -251,12 +263,12 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 3px 10px rgba(0, 166, 81, 0.3);
         }
 
         .save-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 5px 15px rgba(0, 166, 81, 0.5);
         }
 
         .save-button:active {
@@ -329,7 +341,7 @@
 
         .leaderboard-item {
             background: white;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #00A651;
             padding: 12px 15px;
             border-radius: 8px;
             display: flex;
@@ -364,7 +376,7 @@
         .leaderboard-rank {
             font-size: 1.2em;
             font-weight: bold;
-            color: #667eea;
+            color: #00A651;
             margin-right: 12px;
         }
 
@@ -383,7 +395,7 @@
         .leaderboard-score {
             font-size: 1.5em;
             font-weight: bold;
-            color: #667eea;
+            color: #00A651;
             margin-right: 10px;
         }
 
@@ -626,6 +638,7 @@
 
         <!-- Voting Section - visible on mobile after scanning -->
         <div id="voting-section" class="voting-section">
+            <div class="krka-branding">KRKA SHOW</div>
             <div class="voting-event-info">
                 <h2 id="voting-title" style="color: #333; margin-bottom: 10px;">Votează acum!</h2>
                 <p id="voting-description" style="color: #666; margin-bottom: 20px;"></p>
