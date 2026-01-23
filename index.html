@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem de Votare în Timp Real</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        #qrcode {
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .score-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .score-label {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .score-value {
+            font-size: 4em;
+            font-weight: bold;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .votes-count {
+            font-size: 0.9em;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        .stars-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .star-group {
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .star-count {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .star-label {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .voting-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .voting-section.active {
+            display: block;
+        }
+
+        .stars-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .star-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            min-width: 50px;
+        }
+
+        .star-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .star-button:active {
+            transform: translateY(-1px);
+        }
+
+        .star-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .reset-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            margin-top: 20px;
+        }
+
+        .reset-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .reset-button:active {
+            transform: translateY(0);
+        }
+
+        .live-button {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            margin-top: 20px;
+            margin-left: 10px;
+        }
+
+        .live-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+
+        .live-button:active {
+            transform: translateY(0);
+        }
+
+        .editor-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .save-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.5);
+        }
+
+        .save-button:active {
+            transform: translateY(0);
+        }
+
+        .reset-info-button {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .reset-info-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.5);
+        }
+
+        .reset-info-button:active {
+            transform: translateY(0);
+        }
+
+        .save-score-button {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .save-score-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(243, 156, 18, 0.6);
+        }
+
+        .save-score-button:active {
+            transform: translateY(0);
+        }
+
+        .thank-you {
+            display: none;
+            background: #4CAF50;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+
+        .thank-you.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .instruction {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .setup-info {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #856404;
+            font-size: 0.85em;
+            text-align: left;
+        }
+
+        .setup-info h3 {
+            margin-bottom: 10px;
+            color: #856404;
+        }
+
+        .setup-info code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .score-value {
+                font-size: 3em;
+            }
+
+            .stars-buttons {
+                flex-wrap: wrap;
+            }
+
+            .star-button {
+                padding: 12px 20px;
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌟 Votează acum! 🌟</h1>
+        <p class="subtitle">Scanează și oferă-ne părerea ta!</p>
+
+        <div id="status" class="status disconnected">
+            🔴 Mod Local - Firebase neconfigurat
+        </div>
+
+        <!-- Setup Instructions -->
+        <div class="setup-info" style="display: none;">
+            <h3>📋 Pentru sincronizare în timp real:</h3>
+            <ol style="padding-left: 20px; margin-top: 10px;">
+                <li>Creează un cont gratuit pe <a href="https://firebase.google.com" target="_blank">Firebase</a></li>
+                <li>Creează un nou proiect</li>
+                <li>Activează "Realtime Database"</li>
+                <li>În regulile database-ului, pune:
+                    <pre style="background: #fff; padding: 8px; margin: 8px 0; border-radius: 4px; overflow-x: auto;">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre>
+                </li>
+                <li>Copiază configurația din Project Settings</li>
+                <li>Înlocuiește-o în codul HTML (vezi comentariul din cod)</li>
+            </ol>
+        </div>
+
+        <!-- QR Code Section - visible on display page -->
+        <div id="display-section">
+            <!-- Title and Description Editor -->
+            <div class="editor-section">
+                <div class="input-group">
+                    <label for="event-title">Titlu:</label>
+                    <input type="text" id="event-title" placeholder="Introdu titlul evenimentului..." maxlength="100">
+                </div>
+                <div class="input-group">
+                    <label for="event-description">Descriere:</label>
+                    <textarea id="event-description" placeholder="Introdu descrierea evenimentului..." maxlength="200"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button class="save-button" onclick="saveEventInfo()">💾 Salvează</button>
+                    <button class="reset-info-button" onclick="resetEventInfo()">🔄 Reset</button>
+                </div>
+            </div>
+
+            <div class="instruction">
+                Scanează codul QR cu telefonul pentru a vota
+            </div>
+            <div id="qrcode"></div>
+            
+            <div class="score-container">
+                <div class="score-label">Scor Mediu</div>
+                <div class="score-value" id="average-score">0.0</div>
+                <div class="votes-count" id="total-votes">0 voturi</div>
+            </div>
+
+            <div class="stars-container">
+                <div class="star-group">
+                    <div class="star-count" id="count-1">0</div>
+                    <div class="star-label">1</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-2">0</div>
+                    <div class="star-label">2</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-3">0</div>
+                    <div class="star-label">3</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-4">0</div>
+                    <div class="star-label">4</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-5">0</div>
+                    <div class="star-label">5</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-6">0</div>
+                    <div class="star-label">6</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-7">0</div>
+                    <div class="star-label">7</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-8">0</div>
+                    <div class="star-label">8</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-9">0</div>
+                    <div class="star-label">9</div>
+                </div>
+                <div class="star-group">
+                    <div class="star-count" id="count-10">0</div>
+                    <div class="star-label">10</div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="reset-button" onclick="resetVotes()">🔄 Resetare Scoruri</button>
+                <button class="save-score-button" onclick="saveScore()">💾 Salvează Punctaj</button>
+                <button class="live-button" onclick="openLivePage()">📺 Live</button>
+            </div>
+        </div>
+
+        <!-- Voting Section - visible on mobile after scanning -->
+        <div id="voting-section" class="voting-section">
+            <h2 style="color: #333; margin-bottom: 20px;">Votează acum!</h2>
+            <div class="stars-buttons">
+                <button class="star-button" onclick="vote(1)">1</button>
+                <button class="star-button" onclick="vote(2)">2</button>
+                <button class="star-button" onclick="vote(3)">3</button>
+                <button class="star-button" onclick="vote(4)">4</button>
+                <button class="star-button" onclick="vote(5)">5</button>
+                <button class="star-button" onclick="vote(6)">6</button>
+                <button class="star-button" onclick="vote(7)">7</button>
+                <button class="star-button" onclick="vote(8)">8</button>
+                <button class="star-button" onclick="vote(9)">9</button>
+                <button class="star-button" onclick="vote(10)">10</button>
+            </div>
+            <div id="thank-you" class="thank-you">
+                ✓ Mulțumim pentru votul tău!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // CONFIGURARE FIREBASE
+        // ========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIvVlYGERVAxAWMn_-TcX7UNWoU0vgIlI",
+            authDomain: "test-5a0b6.firebaseapp.com",
+            databaseURL: "https://test-5a0b6-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "test-5a0b6",
+            storageBucket: "test-5a0b6.firebasestorage.app",
+            messagingSenderId: "359812892398",
+            appId: "1:359812892398:web:08c911657f92e4193855ff",
+            measurementId: "G-5JL4BNZ3Y0"
+        };
+
+        let database = null;
+        let isFirebaseConfigured = false;
+
+        // Check if Firebase is configured
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            isFirebaseConfigured = true;
+            document.getElementById('status').className = 'status connected';
+            document.getElementById('status').innerHTML = '🟢 Conectat - Sincronizare în timp real activă';
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            document.getElementById('status').innerHTML = '🔴 Eroare Firebase - Verifică configurația';
+        }
+
+        // Get the current page URL
+        const currentUrl = window.location.href.split('?')[0].split('#')[0];
+        const votingUrl = currentUrl + '?vote=true';
+
+        // Check if this is the voting page
+        const urlParams = new URLSearchParams(window.location.search);
+        const isVotingPage = urlParams.get('vote') === 'true';
+
+        // Show appropriate section
+        if (isVotingPage) {
+            document.getElementById('display-section').style.display = 'none';
+            document.getElementById('voting-section').classList.add('active');
+            document.querySelector('.setup-info').style.display = 'none';
+        } else {
+            // Generate QR code
+            new QRCode(document.getElementById("qrcode"), {
+                text: votingUrl,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        // Initialize or get voting data
+        function getDefaultData() {
+            return {
+                votes: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 },
+                total: 0,
+                average: 0
+            };
+        }
+
+        // Save data (Firebase or localStorage)
+        async function saveData(data) {
+            if (isFirebaseConfigured && database) {
+                await database.ref('votes').set(data);
+            } else {
+                localStorage.setItem('votingData', JSON.stringify(data));
+            }
+        }
+
+        // Load data (Firebase or localStorage)
+        async function loadData() {
+            if (isFirebaseConfigured && database) {
+                const snapshot = await database.ref('votes').once('value');
+                return snapshot.val() || getDefaultData();
+            } else {
+                const stored = localStorage.getItem('votingData');
+                return stored ? JSON.parse(stored) : getDefaultData();
+            }
+        }
+
+        // Vote function
+        async function vote(stars) {
+            try {
+                const data = await loadData();
+                
+                // Update votes
+                data.votes[stars] = (data.votes[stars] || 0) + 1;
+                data.total += 1;
+
+                // Calculate average
+                let sum = 0;
+                for (let i = 1; i <= 10; i++) {
+                    sum += i * (data.votes[i] || 0);
+                }
+                data.average = (sum / data.total).toFixed(1);
+
+                // Save data
+                await saveData(data);
+
+                // Show thank you
+                document.getElementById('thank-you').classList.add('show');
+                
+                // Disable buttons
+                const buttons = document.querySelectorAll('.star-button');
+                buttons.forEach(btn => btn.disabled = true);
+
+            } catch (error) {
+                console.error('Error voting:', error);
+                alert('A apărut o eroare. Te rugăm să încerci din nou.');
+            }
+        }
+
+        // Reset votes function
+        async function resetVotes() {
+            if (confirm('Sigur vrei să resetezi toate voturile?')) {
+                try {
+                    const data = getDefaultData();
+                    await saveData(data);
+                    await updateDisplay();
+                    alert('Voturile au fost resetate cu succes!');
+                } catch (error) {
+                    console.error('Error resetting votes:', error);
+                    alert('A apărut o eroare la resetare.');
+                }
+            }
+        }
+
+        // Save event info function
+        async function saveEventInfo() {
+            const title = document.getElementById('event-title').value;
+            const description = document.getElementById('event-description').value;
+
+            if (!title.trim()) {
+                alert('Te rugăm să introduci un titlu!');
+                return;
+            }
+
+            try {
+                const eventInfo = {
+                    title: title,
+                    description: description,
+                    timestamp: Date.now()
+                };
+
+                if (isFirebaseConfigured && database) {
+                    await database.ref('eventInfo').set(eventInfo);
+                } else {
+                    localStorage.setItem('eventInfo', JSON.stringify(eventInfo));
+                }
+
+                alert('Informațiile au fost salvate cu succes!');
+            } catch (error) {
+                console.error('Error saving event info:', error);
+                alert('A apărut o eroare la salvare.');
+            }
+        }
+
+        // Load event info
+        async function loadEventInfo() {
+            try {
+                let eventInfo;
+                
+                if (isFirebaseConfigured && database) {
+                    const snapshot = await database.ref('eventInfo').once('value');
+                    eventInfo = snapshot.val();
+                } else {
+                    const stored = localStorage.getItem('eventInfo');
+                    eventInfo = stored ? JSON.parse(stored) : null;
+                }
+
+                if (eventInfo) {
+                    const titleInput = document.getElementById('event-title');
+                    const descInput = document.getElementById('event-description');
+                    
+                    if (titleInput) titleInput.value = eventInfo.title || '';
+                    if (descInput) descInput.value = eventInfo.description || '';
+                }
+            } catch (error) {
+                console.error('Error loading event info:', error);
+            }
+        }
+
+        // Open live page
+        function openLivePage() {
+            const liveUrl = currentUrl.replace(/voting-system.*\.html/, 'voting-live.html');
+            window.open(liveUrl, '_blank');
+        }
+
+        // Reset event info
+        async function resetEventInfo() {
+            if (confirm('Sigur vrei să resetezi titlul și descrierea?')) {
+                try {
+                    if (isFirebaseConfigured && database) {
+                        await database.ref('eventInfo').remove();
+                    } else {
+                        localStorage.removeItem('eventInfo');
+                    }
+
+                    document.getElementById('event-title').value = '';
+                    document.getElementById('event-description').value = '';
+                    
+                    alert('Informațiile au fost resetate cu succes!');
+                } catch (error) {
+                    console.error('Error resetting event info:', error);
+                    alert('A apărut o eroare la resetare.');
+                }
+            }
+        }
+
+        // Save current score to leaderboard
+        async function saveScore() {
+            try {
+                const data = await loadData();
+                
+                if (data.total === 0) {
+                    alert('Nu există voturi de salvat!');
+                    return;
+                }
+
+                const eventTitle = document.getElementById('event-title').value || 'Eveniment';
+                const timestamp = Date.now();
+                
+                const scoreEntry = {
+                    title: eventTitle,
+                    average: data.average,
+                    percentage: Math.round(parseFloat(data.average) * 10),
+                    total: data.total,
+                    timestamp: timestamp,
+                    date: new Date(timestamp).toLocaleString('ro-RO')
+                };
+
+                if (isFirebaseConfigured && database) {
+                    await database.ref('leaderboard').push(scoreEntry);
+                } else {
+                    const leaderboard = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+                    leaderboard.push(scoreEntry);
+                    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+                }
+
+                alert(`Punctaj salvat: ${scoreEntry.percentage}% (${data.total} voturi)`);
+            } catch (error) {
+                console.error('Error saving score:', error);
+                alert('A apărut o eroare la salvare.');
+            }
+        }
+
+        // Update display
+        async function updateDisplay() {
+            try {
+                const data = await loadData();
+
+                document.getElementById('average-score').textContent = data.average || '0.0';
+                document.getElementById('total-votes').textContent = `${data.total} ${data.total === 1 ? 'vot' : 'voturi'}`;
+
+                for (let i = 1; i <= 10; i++) {
+                    const element = document.getElementById(`count-${i}`);
+                    if (element) {
+                        element.textContent = data.votes[i] || 0;
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating display:', error);
+            }
+        }
+
+        // Listen for Firebase changes (real-time updates)
+        if (isFirebaseConfigured && database && !isVotingPage) {
+            database.ref('votes').on('value', (snapshot) => {
+                const data = snapshot.val() || getDefaultData();
+                
+                document.getElementById('average-score').textContent = data.average || '0.0';
+                document.getElementById('total-votes').textContent = `${data.total} ${data.total === 1 ? 'vot' : 'voturi'}`;
+
+                for (let i = 1; i <= 10; i++) {
+                    const element = document.getElementById(`count-${i}`);
+                    if (element) {
+                        element.textContent = data.votes[i] || 0;
+                    }
+                }
+            });
+        } else if (!isVotingPage) {
+            // Fallback: poll for updates if not using Firebase
+            setInterval(updateDisplay, 2000);
+        }
+
+        // Initialize
+        updateDisplay();
+        loadEventInfo();
+    </script>
+</body>
+</html>
