@@ -513,7 +513,7 @@
         <h1>🌟 Votează acum! 🌟</h1>
         <p class="subtitle">Scanează și oferă-ne părerea ta!</p>
 
-        <div id="status" class="status disconnected">
+        <div id="status" class="status disconnected" style="display: none;">
             🔴 Mod Local - Firebase neconfigurat
         </div>
 
@@ -626,7 +626,10 @@
 
         <!-- Voting Section - visible on mobile after scanning -->
         <div id="voting-section" class="voting-section">
-            <h2 style="color: #333; margin-bottom: 20px;">Votează acum!</h2>
+            <div class="voting-event-info">
+                <h2 id="voting-title" style="color: #333; margin-bottom: 10px;">Votează acum!</h2>
+                <p id="voting-description" style="color: #666; margin-bottom: 20px;"></p>
+            </div>
             <div class="stars-buttons">
                 <button class="star-button" onclick="vote(1)">1</button>
                 <button class="star-button" onclick="vote(2)">2</button>
@@ -688,7 +691,13 @@
             document.getElementById('display-section').style.display = 'none';
             document.getElementById('voting-section').classList.add('active');
             document.querySelector('.setup-info').style.display = 'none';
+            document.getElementById('status').style.display = 'none'; // Hide status on voting page
+            
+            // Load event info for voting page
+            loadVotingEventInfo();
         } else {
+            document.getElementById('status').style.display = 'block'; // Show status on main page
+            
             // Generate QR code
             new QRCode(document.getElementById("qrcode"), {
                 text: votingUrl,
@@ -785,6 +794,9 @@
                 } else {
                     localStorage.setItem(voteKey, 'true');
                 }
+
+                // Save current session ID to check later for new sessions
+                localStorage.setItem('lastVotedSession', currentSession);
 
                 // Show thank you
                 document.getElementById('thank-you').classList.add('show');
@@ -886,6 +898,56 @@
                 }
             } catch (error) {
                 console.error('Error loading event info:', error);
+            }
+        }
+
+        // Load event info for voting page (real-time updates)
+        async function loadVotingEventInfo() {
+            if (isFirebaseConfigured && database) {
+                // Listen for real-time changes
+                database.ref('eventInfo').on('value', (snapshot) => {
+                    const eventInfo = snapshot.val();
+                    
+                    const votingTitle = document.getElementById('voting-title');
+                    const votingDescription = document.getElementById('voting-description');
+                    
+                    if (eventInfo && eventInfo.title) {
+                        if (votingTitle) votingTitle.textContent = eventInfo.title;
+                        if (votingDescription) votingDescription.textContent = eventInfo.description || '';
+                        
+                        // Re-enable voting buttons if session changed
+                        const thankYou = document.getElementById('thank-you');
+                        if (thankYou && thankYou.classList.contains('show')) {
+                            // Check if it's a new session
+                            const currentSession = localStorage.getItem('lastVotedSession');
+                            if (currentSession !== eventInfo.sessionId) {
+                                // New session - re-enable voting
+                                thankYou.classList.remove('show');
+                                const buttons = document.querySelectorAll('.star-button');
+                                buttons.forEach(btn => btn.disabled = false);
+                            }
+                        }
+                    } else {
+                        // Event was reset
+                        if (votingTitle) votingTitle.textContent = 'Votează acum!';
+                        if (votingDescription) votingDescription.textContent = 'Așteaptă noul eveniment...';
+                    }
+                });
+            } else {
+                // Fallback: load once from localStorage
+                try {
+                    const stored = localStorage.getItem('eventInfo');
+                    if (stored) {
+                        const eventInfo = JSON.parse(stored);
+                        const votingTitle = document.getElementById('voting-title');
+                        const votingDescription = document.getElementById('voting-description');
+                        
+                        if (votingTitle) votingTitle.textContent = eventInfo.title || 'Votează acum!';
+                        if (votingDescription) votingDescription.textContent = eventInfo.description || '';
+                    }
+                } catch (error) {
+                    console.error('Error loading voting event info:', error);
+                }
             }
         }
 
