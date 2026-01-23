@@ -387,6 +387,8 @@
                         document.getElementById('event-description').textContent = eventInfo.description || '';
                         toggleContent(true, eventInfo.sessionId);
                     } else {
+                        document.getElementById('event-title').textContent = 'Votează acum!';
+                        document.getElementById('event-description').textContent = '';
                         toggleContent(false);
                     }
                 } else {
@@ -398,14 +400,20 @@
                             document.getElementById('event-description').textContent = eventInfo.description || '';
                             toggleContent(true, eventInfo.sessionId);
                         } else {
+                            document.getElementById('event-title').textContent = 'Votează acum!';
+                            document.getElementById('event-description').textContent = '';
                             toggleContent(false);
                         }
                     } else {
+                        document.getElementById('event-title').textContent = 'Votează acum!';
+                        document.getElementById('event-description').textContent = '';
                         toggleContent(false);
                     }
                 }
             } catch (error) {
                 console.error('Error loading event info:', error);
+                document.getElementById('event-title').textContent = 'Votează acum!';
+                document.getElementById('event-description').textContent = '';
                 toggleContent(false);
             }
         }
@@ -419,7 +427,17 @@
                     document.getElementById('event-description').textContent = eventInfo.description || '';
                     toggleContent(true, eventInfo.sessionId);
                 } else {
+                    // Clear title and description when reset
+                    document.getElementById('event-title').textContent = 'Votează acum!';
+                    document.getElementById('event-description').textContent = '';
                     toggleContent(false);
+                    // Clear QR code container
+                    const qrContainer = document.getElementById("qrcode");
+                    if (qrContainer) {
+                        qrContainer.innerHTML = '';
+                    }
+                    qrCodeGenerated = false;
+                    currentSessionId = null;
                 }
             });
         }
