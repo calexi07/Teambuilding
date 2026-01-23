@@ -330,33 +330,45 @@
 
         // Get voting URL - Hardcoded pentru GitHub Pages
         const votingUrl = 'https://calexi07.github.io/Teambuilding/index.html?vote=true';
+        let currentSessionId = null;
 
         let qrCodeGenerated = false;
 
-        // Generate QR code
-        function generateQRCode() {
-            if (!qrCodeGenerated) {
-                new QRCode(document.getElementById("qrcode"), {
-                    text: votingUrl,
-                    width: 256,
-                    height: 256,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-                qrCodeGenerated = true;
-            }
+        // Generate QR code with session ID
+        function generateQRCode(sessionId) {
+            const qrContainer = document.getElementById("qrcode");
+            
+            // Clear previous QR if exists
+            qrContainer.innerHTML = '';
+            
+            // Add session ID to URL for unique QR per session
+            const sessionVotingUrl = votingUrl + '&session=' + sessionId;
+            
+            new QRCode(qrContainer, {
+                text: sessionVotingUrl,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            qrCodeGenerated = true;
+            currentSessionId = sessionId;
         }
 
         // Show/hide content based on event info
-        function toggleContent(hasEventInfo) {
+        function toggleContent(hasEventInfo, sessionId) {
             const waitingMessage = document.getElementById('waiting-message');
             const liveContent = document.getElementById('live-content');
             
-            if (hasEventInfo) {
+            if (hasEventInfo && sessionId) {
                 waitingMessage.style.display = 'none';
                 liveContent.style.display = 'flex';
-                generateQRCode();
+                // Regenerate QR if session changed
+                if (currentSessionId !== sessionId) {
+                    generateQRCode(sessionId);
+                }
             } else {
                 waitingMessage.style.display = 'block';
                 liveContent.style.display = 'none';
@@ -370,10 +382,10 @@
                     const snapshot = await database.ref('eventInfo').once('value');
                     const eventInfo = snapshot.val();
                     
-                    if (eventInfo && eventInfo.title) {
+                    if (eventInfo && eventInfo.title && eventInfo.sessionId) {
                         document.getElementById('event-title').textContent = eventInfo.title;
                         document.getElementById('event-description').textContent = eventInfo.description || '';
-                        toggleContent(true);
+                        toggleContent(true, eventInfo.sessionId);
                     } else {
                         toggleContent(false);
                     }
@@ -381,10 +393,10 @@
                     const stored = localStorage.getItem('eventInfo');
                     if (stored) {
                         const eventInfo = JSON.parse(stored);
-                        if (eventInfo.title) {
+                        if (eventInfo.title && eventInfo.sessionId) {
                             document.getElementById('event-title').textContent = eventInfo.title;
                             document.getElementById('event-description').textContent = eventInfo.description || '';
-                            toggleContent(true);
+                            toggleContent(true, eventInfo.sessionId);
                         } else {
                             toggleContent(false);
                         }
@@ -402,10 +414,10 @@
         if (isFirebaseConfigured && database) {
             database.ref('eventInfo').on('value', (snapshot) => {
                 const eventInfo = snapshot.val();
-                if (eventInfo && eventInfo.title) {
+                if (eventInfo && eventInfo.title && eventInfo.sessionId) {
                     document.getElementById('event-title').textContent = eventInfo.title;
                     document.getElementById('event-description').textContent = eventInfo.description || '';
-                    toggleContent(true);
+                    toggleContent(true, eventInfo.sessionId);
                 } else {
                     toggleContent(false);
                 }
