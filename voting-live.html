@@ -17,7 +17,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -30,9 +30,21 @@
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
+            max-width: 1400px;
             width: 100%;
             text-align: center;
+        }
+
+        .krka-branding {
+            font-size: 3em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
         }
 
         .event-header {
@@ -73,12 +85,21 @@
         }
 
         .waiting-message h2 {
-            color: #667eea;
+            color: #00A651;
             font-size: 1.8em;
             font-weight: bold;
         }
 
         .live-content {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 40px;
+            justify-content: space-between;
+        }
+
+        .main-content {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -86,7 +107,7 @@
         }
 
         .score-container {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #00A651 0%, #007A3D 100%);
             color: white;
             padding: 40px 60px;
             border-radius: 15px;
@@ -133,8 +154,8 @@
         }
 
         .leaderboard-section {
-            width: 100%;
-            margin-top: 40px;
+            width: 450px;
+            flex-shrink: 0;
         }
 
         .leaderboard-title {
@@ -147,11 +168,13 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            max-height: 600px;
+            overflow-y: auto;
         }
 
         .leaderboard-item {
             background: #f8f9fa;
-            border-left: 5px solid #667eea;
+            border-left: 5px solid #00A651;
             padding: 15px 20px;
             border-radius: 10px;
             display: flex;
@@ -186,7 +209,7 @@
         .leaderboard-rank {
             font-size: 1.5em;
             font-weight: bold;
-            color: #667eea;
+            color: #00A651;
             margin-right: 15px;
         }
 
@@ -205,7 +228,7 @@
         .leaderboard-score {
             font-size: 2em;
             font-weight: bold;
-            color: #667eea;
+            color: #00A651;
         }
 
         .no-scores {
@@ -214,9 +237,25 @@
             padding: 20px;
         }
 
+        @media (max-width: 1200px) {
+            .live-content {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .leaderboard-section {
+                width: 100%;
+                max-width: 600px;
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 25px;
+            }
+
+            .krka-branding {
+                font-size: 2em;
             }
 
             .event-title {
@@ -242,9 +281,17 @@
             .waiting-message h2 {
                 font-size: 1.5em;
             }
+
+            .leaderboard-section {
+                width: 100%;
+            }
         }
 
         @media (max-width: 480px) {
+            .krka-branding {
+                font-size: 1.5em;
+            }
+
             .event-title {
                 font-size: 1.5em;
             }
@@ -269,6 +316,8 @@
 </head>
 <body>
     <div class="container">
+        <div class="krka-branding">KRKA SHOW</div>
+        
         <div class="event-header">
             <h1 class="event-title" id="event-title">Votează acum!</h1>
             <p class="event-description" id="event-description"></p>
@@ -282,20 +331,22 @@
 
         <!-- Content - shown after event info is set -->
         <div id="live-content" class="live-content" style="display: none;">
-            <div class="score-container">
-                <div class="score-label">Punctaj</div>
-                <div class="score-value" id="average-score">0%</div>
-                <div class="votes-count" id="total-votes">0 voturi</div>
-            </div>
+            <div class="main-content">
+                <div class="score-container">
+                    <div class="score-label">Punctaj</div>
+                    <div class="score-value" id="average-score">0%</div>
+                    <div class="votes-count" id="total-votes">0 voturi</div>
+                </div>
 
-            <div class="qr-section">
-                <div id="qrcode"></div>
-                <p class="qr-instruction">Scanează pentru a vota</p>
+                <div class="qr-section">
+                    <div id="qrcode"></div>
+                    <p class="qr-instruction">Scanează pentru a vota</p>
+                </div>
             </div>
 
             <!-- Leaderboard Section -->
             <div class="leaderboard-section" id="leaderboard-section">
-                <h2 class="leaderboard-title">🏆 Clasament Punctaje Salvate</h2>
+                <h2 class="leaderboard-title">🏆 Clasament</h2>
                 <div id="leaderboard-list" class="leaderboard-list">
                     <p class="no-scores">Niciun punctaj salvat încă</p>
                 </div>
