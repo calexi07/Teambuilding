@@ -319,6 +319,30 @@
             transform: translateY(0);
         }
 
+        .toggle-leaderboard-button {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+            margin-top: 20px;
+            margin-left: 10px;
+        }
+
+        .toggle-leaderboard-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.6);
+        }
+
+        .toggle-leaderboard-button:active {
+            transform: translateY(0);
+        }
+
         .leaderboard-section {
             width: 100%;
             margin-top: 30px;
@@ -573,51 +597,31 @@
             <div id="qrcode"></div>
             
             <div class="score-container">
-                <div class="score-label">Scor Mediu</div>
-                <div class="score-value" id="average-score">0.0</div>
+                <div class="score-label">Scor Total</div>
+                <div class="score-value" id="average-score">0</div>
                 <div class="votes-count" id="total-votes">0 voturi</div>
             </div>
 
             <div class="stars-container">
                 <div class="star-group">
                     <div class="star-count" id="count-1">0</div>
-                    <div class="star-label">1</div>
+                    <div class="star-label">1⭐</div>
                 </div>
                 <div class="star-group">
                     <div class="star-count" id="count-2">0</div>
-                    <div class="star-label">2</div>
+                    <div class="star-label">2⭐</div>
                 </div>
                 <div class="star-group">
                     <div class="star-count" id="count-3">0</div>
-                    <div class="star-label">3</div>
+                    <div class="star-label">3⭐</div>
                 </div>
                 <div class="star-group">
                     <div class="star-count" id="count-4">0</div>
-                    <div class="star-label">4</div>
+                    <div class="star-label">4⭐</div>
                 </div>
                 <div class="star-group">
                     <div class="star-count" id="count-5">0</div>
-                    <div class="star-label">5</div>
-                </div>
-                <div class="star-group">
-                    <div class="star-count" id="count-6">0</div>
-                    <div class="star-label">6</div>
-                </div>
-                <div class="star-group">
-                    <div class="star-count" id="count-7">0</div>
-                    <div class="star-label">7</div>
-                </div>
-                <div class="star-group">
-                    <div class="star-count" id="count-8">0</div>
-                    <div class="star-label">8</div>
-                </div>
-                <div class="star-group">
-                    <div class="star-count" id="count-9">0</div>
-                    <div class="star-label">9</div>
-                </div>
-                <div class="star-group">
-                    <div class="star-count" id="count-10">0</div>
-                    <div class="star-label">10</div>
+                    <div class="star-label">5⭐</div>
                 </div>
             </div>
             
@@ -625,6 +629,7 @@
                 <button class="reset-button" onclick="resetVotes()">🔄 Resetare Scoruri</button>
                 <button class="save-score-button" onclick="saveScore()">💾 Salvează Punctaj</button>
                 <button class="live-button" onclick="openLivePage()">📺 Live</button>
+                <button class="toggle-leaderboard-button" onclick="toggleLeaderboardDisplay()">🏆 Arată Clasament</button>
             </div>
 
             <!-- Leaderboard Section -->
@@ -644,16 +649,11 @@
                 <p id="voting-description" style="color: #666; margin-bottom: 20px;"></p>
             </div>
             <div class="stars-buttons">
-                <button class="star-button" onclick="vote(1)">1</button>
-                <button class="star-button" onclick="vote(2)">2</button>
-                <button class="star-button" onclick="vote(3)">3</button>
-                <button class="star-button" onclick="vote(4)">4</button>
-                <button class="star-button" onclick="vote(5)">5</button>
-                <button class="star-button" onclick="vote(6)">6</button>
-                <button class="star-button" onclick="vote(7)">7</button>
-                <button class="star-button" onclick="vote(8)">8</button>
-                <button class="star-button" onclick="vote(9)">9</button>
-                <button class="star-button" onclick="vote(10)">10</button>
+                <button class="star-button" onclick="vote(1)">1⭐</button>
+                <button class="star-button" onclick="vote(2)">2⭐</button>
+                <button class="star-button" onclick="vote(3)">3⭐</button>
+                <button class="star-button" onclick="vote(4)">4⭐</button>
+                <button class="star-button" onclick="vote(5)">5⭐</button>
             </div>
             <div id="thank-you" class="thank-you">
                 ✓ Mulțumim pentru votul tău!
@@ -704,12 +704,12 @@
             document.getElementById('display-section').style.display = 'none';
             document.getElementById('voting-section').classList.add('active');
             document.querySelector('.setup-info').style.display = 'none';
-            document.getElementById('status').style.display = 'none'; // Hide status on voting page
+            document.getElementById('status').style.display = 'none';
             
             // Load event info for voting page
             loadVotingEventInfo();
         } else {
-            document.getElementById('status').style.display = 'block'; // Show status on main page
+            document.getElementById('status').style.display = 'block';
             
             // Generate QR code
             new QRCode(document.getElementById("qrcode"), {
@@ -725,9 +725,9 @@
         // Initialize or get voting data
         function getDefaultData() {
             return {
-                votes: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 },
+                votes: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
                 total: 0,
-                average: 0
+                totalScore: 0
             };
         }
 
@@ -748,6 +748,25 @@
             } else {
                 const stored = localStorage.getItem('votingData');
                 return stored ? JSON.parse(stored) : getDefaultData();
+            }
+        }
+
+        // Toggle leaderboard display on live page
+        async function toggleLeaderboardDisplay() {
+            try {
+                if (isFirebaseConfigured && database) {
+                    const snapshot = await database.ref('showLeaderboard').once('value');
+                    const currentState = snapshot.val() || false;
+                    await database.ref('showLeaderboard').set(!currentState);
+                    alert(currentState ? 'Clasamentul a fost ascuns pe pagina Live' : 'Clasamentul este acum vizibil pe pagina Live');
+                } else {
+                    const currentState = localStorage.getItem('showLeaderboard') === 'true';
+                    localStorage.setItem('showLeaderboard', (!currentState).toString());
+                    alert(currentState ? 'Clasamentul a fost ascuns pe pagina Live' : 'Clasamentul este acum vizibil pe pagina Live');
+                }
+            } catch (error) {
+                console.error('Error toggling leaderboard:', error);
+                alert('A apărut o eroare.');
             }
         }
 
@@ -790,13 +809,7 @@
                 // Update votes
                 data.votes[stars] = (data.votes[stars] || 0) + 1;
                 data.total += 1;
-
-                // Calculate average
-                let sum = 0;
-                for (let i = 1; i <= 10; i++) {
-                    sum += i * (data.votes[i] || 0);
-                }
-                data.average = (sum / data.total).toFixed(1);
+                data.totalScore = (data.totalScore || 0) + stars;
 
                 // Save data
                 await saveData(data);
@@ -871,10 +884,8 @@
                 };
 
                 if (isFirebaseConfigured && database) {
-                    // Save event info with new session
                     await database.ref('eventInfo').set(eventInfo);
                     await database.ref('currentSession').set(sessionId);
-                    // Reset votes for new session
                     await database.ref('votes').set(getDefaultData());
                 } else {
                     localStorage.setItem('eventInfo', JSON.stringify(eventInfo));
@@ -914,10 +925,9 @@
             }
         }
 
-        // Load event info for voting page (real-time updates)
+        // Load event info for voting page
         async function loadVotingEventInfo() {
             if (isFirebaseConfigured && database) {
-                // Listen for real-time changes
                 database.ref('eventInfo').on('value', (snapshot) => {
                     const eventInfo = snapshot.val();
                     
@@ -928,26 +938,21 @@
                         if (votingTitle) votingTitle.textContent = eventInfo.title;
                         if (votingDescription) votingDescription.textContent = eventInfo.description || '';
                         
-                        // Re-enable voting buttons if session changed
                         const thankYou = document.getElementById('thank-you');
                         if (thankYou && thankYou.classList.contains('show')) {
-                            // Check if it's a new session
                             const currentSession = localStorage.getItem('lastVotedSession');
                             if (currentSession !== eventInfo.sessionId) {
-                                // New session - re-enable voting
                                 thankYou.classList.remove('show');
                                 const buttons = document.querySelectorAll('.star-button');
                                 buttons.forEach(btn => btn.disabled = false);
                             }
                         }
                     } else {
-                        // Event was reset
                         if (votingTitle) votingTitle.textContent = 'Votează acum!';
                         if (votingDescription) votingDescription.textContent = 'Așteaptă noul eveniment...';
                     }
                 });
             } else {
-                // Fallback: load once from localStorage
                 try {
                     const stored = localStorage.getItem('eventInfo');
                     if (stored) {
@@ -966,7 +971,7 @@
 
         // Open live page
         function openLivePage() {
-            const liveUrl = currentUrl.replace(/voting-system.*\.html/, 'voting-live.html');
+            const liveUrl = currentUrl.replace(/index.*\.html/, 'voting-live.html');
             window.open(liveUrl, '_blank');
         }
 
@@ -974,11 +979,9 @@
         async function resetEventInfo() {
             if (confirm('Sigur vrei să resetezi titlul și descrierea? Acest lucru va șterge și voturile curente.')) {
                 try {
-                    // Generate new session ID
                     const newSessionId = 'session_' + Date.now();
                     
                     if (isFirebaseConfigured && database) {
-                        // Remove event info and votes
                         await database.ref('eventInfo').remove();
                         await database.ref('votes').remove();
                         await database.ref('currentSession').set(newSessionId);
@@ -991,7 +994,6 @@
                     document.getElementById('event-title').value = '';
                     document.getElementById('event-description').value = '';
                     
-                    // Reload to update display
                     await updateDisplay();
                     
                     alert('Informațiile și voturile au fost resetate cu succes!');
@@ -1017,8 +1019,7 @@
                 
                 const scoreEntry = {
                     title: eventTitle,
-                    average: data.average,
-                    percentage: Math.round(parseFloat(data.average) * 10),
+                    totalScore: data.totalScore,
                     total: data.total,
                     timestamp: timestamp,
                     date: new Date(timestamp).toLocaleString('ro-RO')
@@ -1033,7 +1034,7 @@
                     await loadLeaderboard();
                 }
 
-                alert(`Punctaj salvat: ${scoreEntry.percentage}% (${data.total} voturi)`);
+                alert(`Punctaj salvat: ${data.totalScore} puncte (${data.total} voturi)`);
             } catch (error) {
                 console.error('Error saving score:', error);
                 alert('A apărut o eroare la salvare.');
@@ -1045,10 +1046,10 @@
             try {
                 const data = await loadData();
 
-                document.getElementById('average-score').textContent = data.average || '0.0';
+                document.getElementById('average-score').textContent = data.totalScore || '0';
                 document.getElementById('total-votes').textContent = `${data.total} ${data.total === 1 ? 'vot' : 'voturi'}`;
 
-                for (let i = 1; i <= 10; i++) {
+                for (let i = 1; i <= 5; i++) {
                     const element = document.getElementById(`count-${i}`);
                     if (element) {
                         element.textContent = data.votes[i] || 0;
@@ -1059,15 +1060,15 @@
             }
         }
 
-        // Listen for Firebase changes (real-time updates)
+        // Listen for Firebase changes
         if (isFirebaseConfigured && database && !isVotingPage) {
             database.ref('votes').on('value', (snapshot) => {
                 const data = snapshot.val() || getDefaultData();
                 
-                document.getElementById('average-score').textContent = data.average || '0.0';
+                document.getElementById('average-score').textContent = data.totalScore || '0';
                 document.getElementById('total-votes').textContent = `${data.total} ${data.total === 1 ? 'vot' : 'voturi'}`;
 
-                for (let i = 1; i <= 10; i++) {
+                for (let i = 1; i <= 5; i++) {
                     const element = document.getElementById(`count-${i}`);
                     if (element) {
                         element.textContent = data.votes[i] || 0;
@@ -1075,7 +1076,6 @@
                 }
             });
 
-            // Listen for leaderboard changes
             database.ref('leaderboard').on('value', (snapshot) => {
                 const data = snapshot.val();
                 let leaderboardData = [];
@@ -1090,7 +1090,6 @@
                 displayLeaderboard(leaderboardData);
             });
         } else if (!isVotingPage) {
-            // Fallback: poll for updates if not using Firebase
             setInterval(updateDisplay, 2000);
             setInterval(loadLeaderboard, 2000);
         }
@@ -1132,8 +1131,8 @@
                 return;
             }
 
-            // Sort by percentage (descending)
-            data.sort((a, b) => b.percentage - a.percentage);
+            // Sort by total score (descending)
+            data.sort((a, b) => b.totalScore - a.totalScore);
 
             let html = '';
             data.forEach((item, index) => {
@@ -1147,7 +1146,7 @@
                             <div class="leaderboard-title-text">${item.title}</div>
                             <div class="leaderboard-details">${item.total} voturi • ${item.date}</div>
                         </div>
-                        <div class="leaderboard-score">${item.percentage}%</div>
+                        <div class="leaderboard-score">${item.totalScore} pct</div>
                         <button class="delete-button" onclick="deleteScore('${item.id}')">✕</button>
                     </div>
                 `;
