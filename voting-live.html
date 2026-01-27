@@ -154,13 +154,49 @@
         }
 
         .leaderboard-section {
-            width: 450px;
+            width: 100%;
             flex-shrink: 0;
             display: none;
         }
 
         .leaderboard-section.visible {
             display: block;
+        }
+
+        .leaderboard-section.fullscreen {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .main-content.hidden {
+            display: none;
+        }
+
+        .congratulations-header {
+            display: none;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .congratulations-header.visible {
+            display: block;
+        }
+
+        .congratulations-title {
+            font-size: 3em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .congratulations-subtitle {
+            font-size: 1.3em;
+            color: #666;
         }
 
         .leaderboard-title {
@@ -248,7 +284,7 @@
                 align-items: center;
             }
 
-            .leaderboard-section {
+            .leaderboard-section.fullscreen {
                 width: 100%;
                 max-width: 600px;
             }
@@ -287,8 +323,16 @@
                 font-size: 1.5em;
             }
 
-            .leaderboard-section {
+            .leaderboard-section.fullscreen {
                 width: 100%;
+            }
+
+            .congratulations-title {
+                font-size: 2em;
+            }
+
+            .congratulations-subtitle {
+                font-size: 1.1em;
             }
         }
 
@@ -316,6 +360,14 @@
             .waiting-message h2 {
                 font-size: 1.2em;
             }
+
+            .congratulations-title {
+                font-size: 1.5em;
+            }
+
+            .congratulations-subtitle {
+                font-size: 1em;
+            }
         }
     </style>
 </head>
@@ -328,6 +380,12 @@
             <p class="event-description" id="event-description"></p>
         </div>
 
+        <!-- Congratulations Header - shown when leaderboard is displayed -->
+        <div class="congratulations-header" id="congratulations-header">
+            <div class="congratulations-title">🏆 Felicitări Câștigătorilor! 🏆</div>
+            <p class="congratulations-subtitle">Iată clasamentul final</p>
+        </div>
+
         <!-- Waiting message - shown when no event info -->
         <div id="waiting-message" class="waiting-message">
             <div class="waiting-icon">📱</div>
@@ -336,7 +394,7 @@
 
         <!-- Content - shown after event info is set -->
         <div id="live-content" class="live-content" style="display: none;">
-            <div class="main-content">
+            <div class="main-content" id="main-content">
                 <div class="score-container">
                     <div class="score-label">Participare</div>
                     <div class="score-value" id="participation-percentage">0%</div>
@@ -348,13 +406,13 @@
                     <p class="qr-instruction">Scanează pentru a vota</p>
                 </div>
             </div>
+        </div>
 
-            <!-- Leaderboard Section -->
-            <div class="leaderboard-section" id="leaderboard-section">
-                <h2 class="leaderboard-title">🏆 Clasament</h2>
-                <div id="leaderboard-list" class="leaderboard-list">
-                    <p class="no-scores">Niciun punctaj salvat încă</p>
-                </div>
+        <!-- Leaderboard Section - separate from live content -->
+        <div class="leaderboard-section" id="leaderboard-section">
+            <h2 class="leaderboard-title">🏆 Clasament</h2>
+            <div id="leaderboard-list" class="leaderboard-list">
+                <p class="no-scores">Niciun punctaj salvat încă</p>
             </div>
         </div>
     </div>
@@ -524,11 +582,37 @@
             database.ref('showLeaderboard').on('value', (snapshot) => {
                 const showLeaderboard = snapshot.val() || false;
                 const leaderboardSection = document.getElementById('leaderboard-section');
+                const mainContent = document.getElementById('main-content');
+                const eventHeader = document.querySelector('.event-header');
+                const congratsHeader = document.getElementById('congratulations-header');
+                const waitingMessage = document.getElementById('waiting-message');
+                const liveContent = document.getElementById('live-content');
                 
                 if (showLeaderboard) {
-                    leaderboardSection.classList.add('visible');
+                    // Hide everything except leaderboard
+                    if (mainContent) mainContent.classList.add('hidden');
+                    if (eventHeader) eventHeader.style.display = 'none';
+                    if (waitingMessage) waitingMessage.style.display = 'none';
+                    if (liveContent) liveContent.style.display = 'none';
+                    
+                    // Show congratulations header and leaderboard
+                    if (congratsHeader) congratsHeader.classList.add('visible');
+                    if (leaderboardSection) {
+                        leaderboardSection.classList.add('visible');
+                        leaderboardSection.classList.add('fullscreen');
+                    }
                 } else {
-                    leaderboardSection.classList.remove('visible');
+                    // Show normal content
+                    if (mainContent) mainContent.classList.remove('hidden');
+                    if (eventHeader) eventHeader.style.display = 'block';
+                    if (congratsHeader) congratsHeader.classList.remove('visible');
+                    if (leaderboardSection) {
+                        leaderboardSection.classList.remove('visible');
+                        leaderboardSection.classList.remove('fullscreen');
+                    }
+                    
+                    // Restore normal view based on event info
+                    loadEventInfo();
                 }
             });
         }
