@@ -156,6 +156,11 @@
         .leaderboard-section {
             width: 450px;
             flex-shrink: 0;
+            display: none;
+        }
+
+        .leaderboard-section.visible {
+            display: block;
         }
 
         .leaderboard-title {
@@ -333,9 +338,9 @@
         <div id="live-content" class="live-content" style="display: none;">
             <div class="main-content">
                 <div class="score-container">
-                    <div class="score-label">Punctaj</div>
-                    <div class="score-value" id="average-score">0%</div>
-                    <div class="votes-count" id="total-votes">0 voturi</div>
+                    <div class="score-label">Participare</div>
+                    <div class="score-value" id="participation-percentage">0%</div>
+                    <div class="votes-count" id="participation-count">0/155</div>
                 </div>
 
                 <div class="qr-section">
@@ -369,6 +374,9 @@
 
         let database = null;
         let isFirebaseConfigured = false;
+
+        // Total expected participants
+        const TOTAL_PARTICIPANTS = 155;
 
         // Initialize Firebase
         try {
@@ -499,13 +507,28 @@
                 const data = snapshot.val();
                 
                 if (data) {
-                    // Convert score to percentage (scale from 10)
-                    const percentage = Math.round((parseFloat(data.average) || 0) * 10);
-                    document.getElementById('average-score').textContent = percentage + '%';
-                    document.getElementById('total-votes').textContent = `${data.total || 0} ${data.total === 1 ? 'vot' : 'voturi'}`;
+                    const votesCount = data.total || 0;
+                    const percentage = Math.round((votesCount / TOTAL_PARTICIPANTS) * 100);
+                    
+                    document.getElementById('participation-percentage').textContent = percentage + '%';
+                    document.getElementById('participation-count').textContent = `${votesCount}/${TOTAL_PARTICIPANTS}`;
                 } else {
-                    document.getElementById('average-score').textContent = '0%';
-                    document.getElementById('total-votes').textContent = '0 voturi';
+                    document.getElementById('participation-percentage').textContent = '0%';
+                    document.getElementById('participation-count').textContent = `0/${TOTAL_PARTICIPANTS}`;
+                }
+            });
+        }
+
+        // Listen for leaderboard visibility toggle
+        if (isFirebaseConfigured && database) {
+            database.ref('showLeaderboard').on('value', (snapshot) => {
+                const showLeaderboard = snapshot.val() || false;
+                const leaderboardSection = document.getElementById('leaderboard-section');
+                
+                if (showLeaderboard) {
+                    leaderboardSection.classList.add('visible');
+                } else {
+                    leaderboardSection.classList.remove('visible');
                 }
             });
         }
@@ -551,8 +574,8 @@
                 return;
             }
 
-            // Sort by percentage (descending)
-            data.sort((a, b) => b.percentage - a.percentage);
+            // Sort by total score (descending)
+            data.sort((a, b) => b.totalScore - a.totalScore);
 
             let html = '';
             data.forEach((item, index) => {
@@ -566,7 +589,7 @@
                             <div class="leaderboard-title-text">${item.title}</div>
                             <div class="leaderboard-details">${item.total} voturi • ${item.date}</div>
                         </div>
-                        <div class="leaderboard-score">${item.percentage}%</div>
+                        <div class="leaderboard-score">${item.totalScore} pct</div>
                     </div>
                 `;
             });
