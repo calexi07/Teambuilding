@@ -758,11 +758,25 @@
                     const snapshot = await database.ref('showLeaderboard').once('value');
                     const currentState = snapshot.val() || false;
                     await database.ref('showLeaderboard').set(!currentState);
-                    alert(currentState ? 'Clasamentul a fost ascuns pe pagina Live' : 'Clasamentul este acum vizibil pe pagina Live');
+                    
+                    // Update button text
+                    const button = document.querySelector('.toggle-leaderboard-button');
+                    if (button) {
+                        button.textContent = currentState ? '🏆 Arată Clasament' : '📺 Înapoi la Live';
+                    }
+                    
+                    alert(currentState ? 'S-a revenit la pagina Live' : 'Clasamentul este acum vizibil pe pagina Live');
                 } else {
                     const currentState = localStorage.getItem('showLeaderboard') === 'true';
                     localStorage.setItem('showLeaderboard', (!currentState).toString());
-                    alert(currentState ? 'Clasamentul a fost ascuns pe pagina Live' : 'Clasamentul este acum vizibil pe pagina Live');
+                    
+                    // Update button text
+                    const button = document.querySelector('.toggle-leaderboard-button');
+                    if (button) {
+                        button.textContent = currentState ? '🏆 Arată Clasament' : '📺 Înapoi la Live';
+                    }
+                    
+                    alert(currentState ? 'S-a revenit la pagina Live' : 'Clasamentul este acum vizibil pe pagina Live');
                 }
             } catch (error) {
                 console.error('Error toggling leaderboard:', error);
@@ -1179,6 +1193,23 @@
         loadEventInfo();
         if (!isVotingPage) {
             loadLeaderboard();
+            
+            // Update toggle button text based on current state
+            if (isFirebaseConfigured && database) {
+                database.ref('showLeaderboard').once('value').then((snapshot) => {
+                    const currentState = snapshot.val() || false;
+                    const button = document.querySelector('.toggle-leaderboard-button');
+                    if (button) {
+                        button.textContent = currentState ? '📺 Înapoi la Live' : '🏆 Arată Clasament';
+                    }
+                });
+            } else {
+                const currentState = localStorage.getItem('showLeaderboard') === 'true';
+                const button = document.querySelector('.toggle-leaderboard-button');
+                if (button) {
+                    button.textContent = currentState ? '📺 Înapoi la Live' : '🏆 Arată Clasament';
+                }
+            }
         }
     </script>
 </body>
