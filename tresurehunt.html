@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Let's Go Team - Sibiu 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Open Sans', Arial, sans-serif; }
+  .font-display { font-family: 'Cormorant Garamond', serif; }
+</style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-[#f8faf9] via-[#e8f3ec] to-[#eef8f0] p-4 sm:p-8">
+
+<div id="app" class="max-w-2xl mx-auto"></div>
+
+<!-- ⚠️ CONFIGURARE: completează cu datele proiectului tău Supabase -->
+<script>
+  window.SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+  window.SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+</script>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+const TEAMS = [
+  { id: "soimii", emoji: "🦅", name: "Șoimii Turnului" },
+  { id: "ochii", emoji: "👁️", name: "Ochii Sibiului" },
+  { id: "gardienii", emoji: "🌉", name: "Gardienii Podului" },
+  { id: "cavalerii", emoji: "🏰", name: "Cavalerii Cetății" },
+  { id: "vanatorii", emoji: "🔑", name: "Vânătorii de Comori" },
+  { id: "exploratorii", emoji: "⭐", name: "Exploratorii Transilvaniei" },
+  { id: "navigatorii", emoji: "🧭", name: "Navigatorii Orașului" },
+  { id: "lupii", emoji: "🐺", name: "Lupii Cibinului" },
+  { id: "legendele", emoji: "👑", name: "Legendele Brukenthal" },
+];
+
+const TASKS = [
+  { id: "t1", type: "photo", title: "Poză de echipă", prompt: "Faceți o poză cu toată echipa lângă un loc simbolic din centrul vechi." },
+  { id: "t2", type: "text", title: "Ghicitoare", prompt: "Câte turnuri de apărare mai sunt astăzi în Sibiu? Scrieți răspunsul." },
+  { id: "t3", type: "photo", title: "Verde ca noi", prompt: "O poză a echipei purtând ceva verde — orice, oricât de mic." },
+  { id: "t4", type: "photo", title: "Peste pod", prompt: "O poză originală făcută pe sau lângă un pod din centrul vechi." },
+  { id: "t5", type: "text", title: "Misterul zilei", prompt: "Notați o poveste sau o legendă auzită de la un localnic în timpul jocului." },
+];
+
+const MAX_SCORE = 10;
+const app = document.getElementById("app");
+
+let state = { role: null, team: null };
+
+function headerHtml(title, subtitle, showBack) {
+  return `
+    <div class="relative overflow-hidden rounded-2xl mb-6" style="background: linear-gradient(135deg, #0b1f3a 0%, #123a2b 100%);">
+      <div class="absolute inset-0" style="background: radial-gradient(circle at 20% 20%, rgba(0,150,57,0.35), transparent 45%), radial-gradient(circle at 80% 30%, rgba(184,212,50,0.3), transparent 40%);"></div>
+      <div class="relative px-6 py-8 text-center">
+        ${showBack ? `<button id="backBtn" class="absolute left-4 top-4 text-white/70 hover:text-white text-sm">&larr; Înapoi</button>` : ""}
+        <h1 class="font-display text-3xl font-bold text-white tracking-wide">${title}</h1>
+        ${subtitle ? `<p class="text-[#b8d432] font-semibold mt-2">${subtitle}</p>` : ""}
+      </div>
+    </div>`;
+}
+
+function statusPillHtml(score, hasSubmission) {
+  if (score !== null && score !== undefined) {
+    return `<span class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-[#e8f5ed] text-[#007a2e]">★ ${score}/${MAX_SCORE}</span>`;
+  }
+  if (hasSubmission) {
+    return `<span class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-[#fff4e6] text-[#e65100]">⏱ În evaluare</span>`;
+  }
+  return `<span class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-gray-100 text-gray-500">Netrimis</span>`;
+}
+
+function renderRoleSelect() {
+  app.innerHTML = `
+    ${headerHtml("Let's Go Team", "Sibiu 2026 · Treasure Hunt", false)}
+    <p class="text-center text-gray-500 mb-6">Alege spațiul tău</p>
+    <div class="grid grid-cols-1 gap-4">
+      <button id="rolePlayer" class="flex items-center gap-4 p-5 rounded-2xl border-2 border-gray-200 hover:border-[#009639] hover:shadow-md transition-all bg-white text-left">
+        <div class="w-12 h-12 rounded-full bg-[#e8f5ed] flex items-center justify-center text-[#009639] text-xl">👥</div>
+        <div>
+          <div class="font-bold text-gray-800">Sunt jucător</div>
+          <div class="text-sm text-gray-500">Trimite task-urile echipei tale</div>
+        </div>
+      </button>
+      <button id="roleReferee" class="flex items-center gap-4 p-5 rounded-2xl border-2 border-gray-200 hover:border-[#ff9800] hover:shadow-md transition-all bg-white text-left">
+        <div class="w-12 h-12 rounded-full bg-[#fff4e6] flex items-center justify-center text-[#ff9800] text-xl">🛡️</div>
+        <div>
+          <div class="font-bold text-gray-800">Sunt arbitru</div>
+          <div class="text-sm text-gray-500">Evaluează task-urile unei singure echipe</div>
+        </div>
+      </button>
+    </div>`;
+  document.getElementById("rolePlayer").onclick = () => { state.role = "player"; renderTeamPicker(); };
+  document.getElementById("roleReferee").onclick = () => { state.role = "referee"; renderTeamPicker(); };
+}
+
+function renderTeamPicker() {
+  const isPlayer = state.role === "player";
+  app.innerHTML = `
+    ${headerHtml(
+      isPlayer ? "Alege echipa ta" : "Ce echipă arbitrezi?",
+      isPlayer ? "Fiecare echipă vede doar propriile task-uri" : "Vei vedea doar submisiile acestei echipe",
+      true
+    )}
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      ${TEAMS.map(t => `
+        <button data-team="${t.id}" class="teamBtn flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 hover:border-[#009639] hover:shadow-md transition-all bg-white">
+          <span class="text-3xl">${t.emoji}</span>
+          <span class="text-sm font-semibold text-gray-700 text-center leading-tight">${t.name}</span>
+        </button>`).join("")}
+    </div>`;
+  document.getElementById("backBtn").onclick = () => { state.role = null; renderRoleSelect(); };
+  document.querySelectorAll(".teamBtn").forEach(btn => {
+    btn.onclick = () => {
+      state.team = TEAMS.find(t => t.id === btn.dataset.team);
+      if (state.role === "player") renderPlayerScreen();
+      else renderRefereeScreen();
+    };
+  });
+}
+
+async function fetchSubmissions(teamId) {
+  const { data, error } = await supabase.from("submissions").select("*").eq("team_id", teamId);
+  if (error) { console.error(error); return {}; }
+  const map = {};
+  for (const row of data) map[row.task_id] = row;
+  return map;
+}
+
+async function compressImage(file, maxWidth = 900, quality = 0.65) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(blob => resolve(blob), "image/jpeg", quality);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function renderPlayerScreen() {
+  const team = state.team;
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
+    `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
+  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+
+  const submissions = await fetchSubmissions(team.id);
+  drawPlayerTasks(team, submissions);
+}
+
+function drawPlayerTasks(team, submissions) {
+  const totalScore = TASKS.reduce((sum, t) => sum + (submissions[t.id]?.score ?? 0), 0);
+  const scoredCount = TASKS.filter(t => submissions[t.id]?.score !== null && submissions[t.id]?.score !== undefined).length;
+
+  const summary = `
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between">
+      <div>
+        <div class="text-xs uppercase tracking-wide text-gray-400 font-bold">Scor curent</div>
+        <div class="text-2xl font-bold text-[#009639]">${totalScore} <span class="text-sm text-gray-400 font-normal">/ ${TASKS.length * MAX_SCORE}</span></div>
+      </div>
+      <div class="text-sm text-gray-500">${scoredCount}/${TASKS.length} task-uri evaluate</div>
+    </div>`;
+
+  const cards = TASKS.map(task => {
+    const sub = submissions[task.id];
+    return `
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4" data-task="${task.id}">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <div class="font-bold text-gray-800">${task.title}</div>
+            <div class="text-sm text-gray-500 mt-1">${task.prompt}</div>
+          </div>
+          ${statusPillHtml(sub?.score, !!sub)}
+        </div>
+        ${task.type === "photo" ? `
+          <div class="mt-3">
+            ${sub?.content ? `<img src="${sub.content}" class="w-full max-h-56 object-cover rounded-xl mb-3 border border-gray-100">` : ""}
+            <label class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border-2 border-[#009639] text-[#009639] hover:bg-[#e8f5ed] cursor-pointer transition-colors">
+              📷 ${sub ? "Înlocuiește poza" : "Încarcă poza"}
+              <input type="file" accept="image/*" capture="environment" class="hidden photoInput">
+            </label>
+            <span class="photoStatus text-xs text-gray-400 ml-2"></span>
+          </div>
+        ` : `
+          <div class="mt-3">
+            ${sub?.content ? `<div class="text-sm bg-gray-50 rounded-lg p-3 mb-3 text-gray-700">${sub.content}</div>` : ""}
+            <div class="flex gap-2">
+              <input type="text" class="textInput flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none" placeholder="Scrie răspunsul aici..." value="${sub?.content ? sub.content.replace(/"/g, '&quot;') : ""}">
+              <button class="textSubmit px-4 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">${sub ? "Actualizează" : "Trimite"}</button>
+            </div>
+          </div>
+        `}
+      </div>`;
+  }).join("");
+
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) + summary + cards;
+  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+
+  document.querySelectorAll("[data-task]").forEach(card => {
+    const taskId = card.dataset.task;
+    const task = TASKS.find(t => t.id === taskId);
+
+    if (task.type === "photo") {
+      const input = card.querySelector(".photoInput");
+      const statusEl = card.querySelector(".photoStatus");
+      input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        statusEl.textContent = "Se trimite...";
+        try {
+          const blob = await compressImage(file);
+          const path = `${team.id}/${taskId}-${Date.now()}.jpg`;
+          const { error: upErr } = await supabase.storage.from("submissions").upload(path, blob, { contentType: "image/jpeg" });
+          if (upErr) throw upErr;
+          const { data: pub } = supabase.storage.from("submissions").getPublicUrl(path);
+          const { error: dbErr } = await supabase.from("submissions").upsert({
+            team_id: team.id, task_id: taskId, type: "photo", content: pub.publicUrl, score: null
+          }, { onConflict: "team_id,task_id" });
+          if (dbErr) throw dbErr;
+          const submissions = await fetchSubmissions(team.id);
+          drawPlayerTasks(team, submissions);
+        } catch (e) {
+          statusEl.textContent = "Eroare — încearcă din nou.";
+          console.error(e);
+        }
+      };
+    } else {
+      const textInput = card.querySelector(".textInput");
+      const btn = card.querySelector(".textSubmit");
+      btn.onclick = async () => {
+        const text = textInput.value.trim();
+        if (!text) return;
+        btn.disabled = true;
+        btn.textContent = "Se trimite...";
+        try {
+          const { error } = await supabase.from("submissions").upsert({
+            team_id: team.id, task_id: taskId, type: "text", content: text, score: null
+          }, { onConflict: "team_id,task_id" });
+          if (error) throw error;
+          const submissions = await fetchSubmissions(team.id);
+          drawPlayerTasks(team, submissions);
+        } catch (e) {
+          btn.textContent = "Eroare — încearcă din nou";
+          console.error(e);
+        }
+      };
+    }
+  });
+}
+
+async function renderRefereeScreen() {
+  const team = state.team;
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
+    `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
+  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+
+  const submissions = await fetchSubmissions(team.id);
+  drawRefereeTasks(team, submissions);
+}
+
+function drawRefereeTasks(team, submissions) {
+  const cards = TASKS.map(task => {
+    const sub = submissions[task.id];
+    return `
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4" data-task="${task.id}">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <div class="font-bold text-gray-800">${task.title}</div>
+            <div class="text-sm text-gray-500 mt-1">${task.prompt}</div>
+          </div>
+          ${statusPillHtml(sub?.score, !!sub)}
+        </div>
+        ${!sub ? `<div class="text-sm text-gray-400 mt-3 bg-gray-50 rounded-lg p-3">Echipa nu a trimis încă răspunsul pentru acest task.</div>` : ""}
+        ${sub && sub.type === "photo" ? `<img src="${sub.content}" class="w-full max-h-64 object-cover rounded-xl mt-3 mb-3 border border-gray-100">` : ""}
+        ${sub && sub.type === "text" ? `<div class="text-sm bg-gray-50 rounded-lg p-3 mt-3 mb-3 text-gray-700">${sub.content}</div>` : ""}
+        ${sub ? `
+          <div class="flex items-center gap-2">
+            <input type="number" min="0" max="${MAX_SCORE}" class="scoreInput w-28 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#ff9800] focus:outline-none" placeholder="${sub.score ?? 'Notă (0-10)'}">
+            <button class="scoreSave px-4 py-2 rounded-lg bg-[#ff9800] text-white text-sm font-semibold hover:bg-[#e65100] transition-colors">Salvează nota</button>
+          </div>` : ""}
+      </div>`;
+  }).join("");
+
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) + cards;
+  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+
+  document.querySelectorAll("[data-task]").forEach(card => {
+    const taskId = card.dataset.task;
+    const saveBtn = card.querySelector(".scoreSave");
+    if (!saveBtn) return;
+    saveBtn.onclick = async () => {
+      const input = card.querySelector(".scoreInput");
+      const raw = input.value;
+      if (raw === "") return;
+      const score = Math.max(0, Math.min(MAX_SCORE, Number(raw)));
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Se salvează...";
+      try {
+        const { error } = await supabase.from("submissions").update({ score }).eq("team_id", team.id).eq("task_id", taskId);
+        if (error) throw error;
+        const submissions = await fetchSubmissions(team.id);
+        drawRefereeTasks(team, submissions);
+      } catch (e) {
+        saveBtn.textContent = "Eroare — încearcă din nou";
+        console.error(e);
+      }
+    };
+  });
+}
+
+renderRoleSelect();
+</script>
+</body>
+</html>
