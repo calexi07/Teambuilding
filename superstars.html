@@ -50,13 +50,11 @@
   .num{font-family:'Space Grotesk', monospace;}
   a{color:inherit; text-decoration:none;}
   button{font-family:inherit; cursor:pointer;}
+  input,select{font-family:inherit;}
   ::selection{background:var(--gold); color:#221238;}
 
   /* ---------- top corner nav ---------- */
-  .corner-nav{
-    position:fixed; top:16px; left:16px; z-index:20;
-    display:flex; gap:8px; align-items:center;
-  }
+  .corner-nav{position:fixed; top:16px; left:16px; z-index:20; display:flex; gap:8px; align-items:center;}
   .corner-btn{
     background:rgba(20,12,45,0.6); border:1px solid var(--card-border);
     color:var(--lavender); padding:8px 14px; border-radius:999px;
@@ -66,14 +64,8 @@
   .corner-btn:hover{border-color:var(--card-border-lit); color:var(--gold);}
 
   /* ---------- HOME ---------- */
-  .home{
-    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:60px 24px;
-  }
-  .home .eyebrow{
-    letter-spacing:.3em; text-transform:uppercase; font-size:12px; color:var(--lavender);
-    font-weight:700; margin-bottom:18px;
-  }
+  .home{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:60px 24px;}
+  .home .eyebrow{letter-spacing:.3em; text-transform:uppercase; font-size:12px; color:var(--lavender); font-weight:700; margin-bottom:18px;}
   .home h1{
     font-size:clamp(38px, 7vw, 76px); margin:0; line-height:1;
     background:linear-gradient(100deg, var(--gold) 10%, #fff 35%, var(--magenta) 60%, var(--violet-soft) 90%);
@@ -81,10 +73,7 @@
     text-shadow:0 0 60px rgba(255,215,106,0.25);
   }
   .home .sub{color:var(--lavender); margin-top:14px; font-size:16px;}
-  .home .cards{
-    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
-    gap:18px; margin-top:52px; max-width:820px; width:100%;
-  }
+  .home .cards{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:18px; margin-top:52px; max-width:820px; width:100%;}
   .nav-card{
     background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
     padding:28px 20px; transition:all .18s ease; display:flex; flex-direction:column; gap:10px;
@@ -101,12 +90,24 @@
   .page-header .eyebrow{letter-spacing:.25em; text-transform:uppercase; font-size:11px; color:var(--lavender-dim); font-weight:700;}
   .page-header h2{font-size:clamp(24px,4vw,38px); margin:6px 0 0;}
 
-  /* ---------- SCREEN VIEW ---------- */
-  .screen-wrap{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;}
-  .screen-eyebrow{
-    display:flex; align-items:center; gap:10px; letter-spacing:.35em; text-transform:uppercase;
-    font-size:13px; color:var(--gold); font-weight:700; margin-bottom:14px;
+  /* ---------- SCREEN: name-only ---------- */
+  .screen-name{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .screen-name .tag{letter-spacing:.35em; text-transform:uppercase; font-size:15px; color:var(--gold); font-weight:700; margin-bottom:22px;}
+  .screen-name .ic{font-size:clamp(60px,10vw,120px); filter:drop-shadow(0 0 20px rgba(255,215,106,0.45)); margin-bottom:10px;}
+  .screen-name h1{
+    font-size:clamp(48px, 10vw, 120px); margin:0; line-height:1;
+    background:linear-gradient(100deg, #fff 10%, var(--gold) 55%, var(--magenta) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
   }
+
+  /* ---------- SCREEN: video ---------- */
+  .screen-video{position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:15;}
+  .screen-video video{width:100%; height:100%; object-fit:contain;}
+  .screen-video .empty{color:var(--lavender); font-size:18px; text-align:center; padding:20px;}
+
+  /* ---------- SCREEN: scores ---------- */
+  .screen-wrap{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;}
+  .screen-eyebrow{display:flex; align-items:center; gap:10px; letter-spacing:.35em; text-transform:uppercase; font-size:13px; color:var(--gold); font-weight:700; margin-bottom:14px;}
   .round-badge{
     display:inline-flex; align-items:center; gap:8px; padding:8px 20px; border-radius:999px;
     background:rgba(255,79,163,0.14); border:1px solid rgba(255,79,163,0.4); color:#ffb6dc;
@@ -126,23 +127,15 @@
   .ring-dot{fill:rgba(255,255,255,0.28); transition:all .4s ease;}
   .ring-dot.filled{fill:var(--gold); filter:drop-shadow(0 0 8px rgba(255,215,106,0.9));}
   .ring-core{fill:rgba(255,255,255,0.045); stroke:var(--violet); stroke-width:1.5;}
-  .ring-total{
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  }
-  .ring-total .n{font-size:clamp(38px,7vw,64px); font-weight:700; line-height:1;}
+  .ring-total{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .ring-total .n{font-size:clamp(44px,8vw,74px); font-weight:700; line-height:1;}
   .ring-total .lbl{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--lavender); margin-top:6px;}
-  .crit-grid{
-    display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px;
-    max-width:920px; width:100%; margin-top:20px;
-  }
-  .crit-card{
-    background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:16px;
-    transition:all .3s ease;
-  }
+  .crit-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px; max-width:960px; width:100%; margin-top:20px;}
+  .crit-card{background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:16px; transition:all .3s ease;}
   .crit-card.filled{border-color:var(--card-border-lit); background:rgba(255,215,106,0.07); box-shadow:0 0 24px rgba(255,215,106,0.12);}
   .crit-card .jn{font-size:12px; color:var(--lavender-dim); font-weight:600;}
   .crit-card .cn{font-size:13px; color:var(--lavender); margin-top:2px; min-height:16px;}
-  .crit-card .sc{font-family:'Space Grotesk'; font-size:26px; font-weight:700; margin-top:6px; color:var(--gold);}
+  .crit-card .sc{font-family:'Space Grotesk'; font-size:30px; font-weight:700; margin-top:6px; color:var(--gold);}
   .crit-card .sc.pending{color:var(--lavender-dim); font-size:18px;}
   .sparkle{position:fixed; pointer-events:none; font-size:20px; animation:sparkleUp 1.6s ease-out forwards; z-index:5;}
   @keyframes sparkleUp{
@@ -151,64 +144,86 @@
     100%{opacity:0; transform:translateY(-140px) scale(1.1) rotate(180deg);}
   }
 
+  /* ---------- SCREEN: song reveal ---------- */
+  .screen-song{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;}
+  .screen-song .who{font-size:16px; color:var(--lavender); font-weight:700; margin-bottom:6px;}
+  .screen-song .tag{letter-spacing:.3em; text-transform:uppercase; font-size:14px; color:var(--gold); font-weight:700; margin-bottom:18px;}
+  .screen-song .title{
+    font-size:clamp(32px,6vw,58px); margin:0;
+    background:linear-gradient(100deg, #fff 10%, var(--gold) 55%, var(--magenta) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .screen-song .artist{font-size:18px; color:var(--lavender); margin-top:8px;}
+  .screen-song img{
+    margin-top:28px; width:min(420px,80vw); aspect-ratio:1; object-fit:cover; border-radius:24px;
+    border:2px solid var(--card-border-lit); box-shadow:0 0 50px rgba(255,215,106,0.25);
+  }
+
+  /* ---------- SCREEN: leaderboard ---------- */
+  .lb-screen{flex:1; display:flex; flex-direction:column; align-items:center; padding:70px 24px 40px; width:100%;}
+  .lb-screen h1{
+    font-size:clamp(30px,5vw,54px); margin:0 0 30px;
+    background:linear-gradient(100deg, var(--gold) 10%, #fff 50%, var(--magenta) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .lb-list{width:100%; max-width:680px; display:flex; flex-direction:column; gap:10px;}
+  .lb-row{display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:14px 20px;}
+  .lb-row.top1{border-color:var(--gold); box-shadow:0 0 30px rgba(255,215,106,0.2);}
+  .lb-row .rk{font-size:22px; width:34px;}
+  .lb-row .nm{flex:1; font-weight:700; font-size:18px; text-align:left;}
+  .lb-row .tt{font-family:'Space Grotesk'; font-weight:700; font-size:24px; color:var(--gold);}
+
   /* ---------- CONTROL ---------- */
-  .tabs{display:flex; gap:10px; justify-content:center; margin-bottom:22px;}
-  .tab{
-    padding:10px 22px; border-radius:999px; border:1px solid var(--card-border); background:var(--card);
-    font-weight:700; font-size:14px; color:var(--lavender);
-  }
+  .tabs{display:flex; gap:10px; justify-content:center; margin-bottom:22px; flex-wrap:wrap;}
+  .tab{padding:10px 22px; border-radius:999px; border:1px solid var(--card-border); background:var(--card); font-weight:700; font-size:14px; color:var(--lavender);}
   .tab.active{background:linear-gradient(100deg, var(--violet-soft), var(--magenta)); color:#fff; border-color:transparent;}
-  .team-grid{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; margin-bottom:26px;
-  }
-  .team-pick{
-    background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:14px 10px;
-    text-align:center; font-weight:700; font-size:13px; color:var(--lavender);
-  }
+  .team-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; margin-bottom:26px;}
+  .team-pick{background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:14px 10px; text-align:center; font-weight:700; font-size:13px; color:var(--lavender);}
   .team-pick .ic{display:block; font-size:22px; margin-bottom:6px;}
   .team-pick.active{border-color:var(--gold); background:rgba(255,215,106,0.1); color:var(--gold); box-shadow:0 0 20px rgba(255,215,106,0.15);}
   .team-pick .status{display:block; font-size:10px; margin-top:4px; color:var(--lavender-dim); font-weight:600;}
   .team-pick.done .status{color:#7ee787;}
   .stepper{display:flex; justify-content:center; gap:10px; margin-bottom:8px;}
-  .step-btn{
-    background:var(--card); border:1px solid var(--card-border); border-radius:999px; padding:10px 20px;
-    color:var(--ink); font-weight:700; font-size:14px;
-  }
-  .panel{
-    background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
-    padding:22px; margin-bottom:22px;
-  }
-  .panel h3{margin:0 0 14px; font-size:16px; display:flex; align-items:center; justify-content:space-between;}
-  .crit-row{
-    display:flex; align-items:center; justify-content:space-between; padding:10px 0;
-    border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;
-  }
+  .step-btn{background:var(--card); border:1px solid var(--card-border); border-radius:999px; padding:10px 20px; color:var(--ink); font-weight:700; font-size:14px;}
+  .panel{background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius); padding:22px; margin-bottom:22px;}
+  .panel h3{margin:0 0 14px; font-size:16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .crit-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;}
   .crit-row:last-child{border-bottom:none;}
   .crit-row .who{font-weight:700;}
   .crit-row .what{color:var(--lavender-dim); font-size:12px;}
   .crit-row .val{font-family:'Space Grotesk'; font-weight:700; color:var(--gold); font-size:18px; min-width:34px; text-align:right;}
   .crit-row .val.pending{color:var(--lavender-dim); font-size:13px;}
-  .mini-btn{
-    background:rgba(255,79,163,0.12); border:1px solid rgba(255,79,163,0.4); color:#ffb6dc;
-    padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700;
+  .mini-btn{background:rgba(255,79,163,0.12); border:1px solid rgba(255,79,163,0.4); color:#ffb6dc; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700;}
+  .stage-btns{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+  .stage-btn{padding:9px 16px; border-radius:10px; border:1px solid var(--card-border); background:rgba(255,255,255,0.04); color:var(--lavender); font-weight:700; font-size:13px;}
+  .stage-btn.active{border-color:var(--gold); color:var(--gold); background:rgba(255,215,106,0.1);}
+  .field-row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px;}
+  .field-row input[type=text], .field-row select{
+    flex:1; min-width:180px; background:rgba(255,255,255,0.05); border:1px solid var(--card-border);
+    color:var(--ink); padding:10px 14px; border-radius:10px; font-size:14px;
   }
+  .go-btn{background:linear-gradient(100deg, var(--violet-soft), var(--magenta)); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-weight:700; font-size:13px;}
+  .save-btn{background:rgba(255,215,106,0.15); border:1px solid var(--card-border-lit); color:var(--gold); padding:10px 18px; border-radius:10px; font-weight:700; font-size:13px;}
+  .hint{font-size:12px; color:var(--lavender-dim); margin-top:8px;}
+  .current-song{font-size:13px; color:var(--lavender); margin-top:6px;}
+  .order-row{display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;}
+  .order-row:last-child{border-bottom:none;}
+  .order-pos{width:26px; height:26px; border-radius:50%; background:rgba(255,215,106,0.15); color:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0;}
+  .order-team{flex:1; font-weight:600;}
+  .order-actions{display:flex; gap:6px;}
+  .order-btn{background:var(--card); border:1px solid var(--card-border); border-radius:8px; width:32px; height:32px; color:var(--ink); font-size:13px;}
+  .order-btn:disabled{opacity:.25; cursor:default;}
   table.board{width:100%; border-collapse:collapse; font-size:14px;}
   table.board th{text-align:left; color:var(--lavender-dim); font-size:11px; text-transform:uppercase; letter-spacing:.1em; padding:6px 8px;}
   table.board td{padding:10px 8px; border-top:1px solid rgba(255,255,255,0.06);}
   table.board tr td:first-child{font-weight:700;}
   .rank{display:inline-flex; width:26px;}
   .danger-zone{text-align:center; margin-top:10px;}
-  .danger-btn{
-    background:rgba(255,60,80,0.1); border:1px solid rgba(255,60,80,0.4); color:#ff8a97;
-    padding:10px 22px; border-radius:10px; font-weight:700; font-size:13px;
-  }
+  .danger-btn{background:rgba(255,60,80,0.1); border:1px solid rgba(255,60,80,0.4); color:#ff8a97; padding:10px 22px; border-radius:10px; font-weight:700; font-size:13px;}
 
   /* ---------- JURY SELECT ---------- */
   .jury-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px;}
-  .jury-card{
-    background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:20px;
-    display:flex; flex-direction:column; gap:6px;
-  }
+  .jury-card{background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:6px;}
   .jury-card:hover{border-color:var(--card-border-lit);}
   .jury-card .nm{font-family:'Baloo 2'; font-size:18px; font-weight:700;}
   .jury-card .cr{font-size:12px; color:var(--lavender);}
@@ -217,39 +232,29 @@
   /* ---------- JURY SCORE ---------- */
   .jscore{flex:1; display:flex; flex-direction:column; align-items:center; padding:78px 18px 30px; text-align:center;}
   .jname{font-size:13px; color:var(--lavender-dim); font-weight:700; text-transform:uppercase; letter-spacing:.15em;}
-  .jcrit{
-    font-family:'Baloo 2'; font-size:clamp(22px,5vw,30px); font-weight:700; margin-top:6px;
-    color:var(--gold);
-  }
-  .jteam-tag{
-    margin-top:22px; padding:14px 26px; border-radius:16px; background:var(--card); border:1px solid var(--card-border);
-  }
+  .jcrit{font-family:'Baloo 2'; font-size:clamp(24px,5vw,34px); font-weight:700; margin-top:6px; color:var(--gold);}
+  .jteam-tag{margin-top:22px; padding:16px 30px; border-radius:16px; background:var(--card); border:1px solid var(--card-border);}
   .jteam-tag .lbl{font-size:11px; color:var(--lavender-dim); text-transform:uppercase; letter-spacing:.15em;}
-  .jteam-tag .val{font-family:'Baloo 2'; font-size:26px; margin-top:4px;}
-  .pad{
-    display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:34px;
-    max-width:420px; width:100%;
-  }
+  .jteam-tag .val{font-family:'Baloo 2'; font-size:28px; margin-top:4px;}
+  .pad{display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-top:36px; max-width:560px; width:100%;}
   .pad-btn{
-    aspect-ratio:1; border-radius:16px; background:var(--card); border:1px solid var(--card-border);
-    font-family:'Space Grotesk'; font-size:24px; font-weight:700; color:var(--ink);
+    aspect-ratio:1; border-radius:20px; background:var(--card); border:1px solid var(--card-border);
+    font-family:'Space Grotesk'; font-size:38px; font-weight:700; color:var(--ink);
     transition:all .12s ease;
   }
   .pad-btn:active{transform:scale(.94);}
   .pad-btn.selected{
     background:linear-gradient(140deg, var(--gold), var(--gold-deep)); color:#241238; border-color:transparent;
-    box-shadow:0 0 26px rgba(255,215,106,0.5);
+    box-shadow:0 0 30px rgba(255,215,106,0.55);
   }
-  .save-note{margin-top:22px; font-size:13px; color:#7ee787; font-weight:700; min-height:18px;}
-  .waiting-box{
-    margin-top:40px; padding:30px; border-radius:18px; background:var(--card); border:1px dashed var(--card-border);
-    max-width:360px; color:var(--lavender);
-  }
+  .save-note{margin-top:26px; font-size:16px; color:#7ee787; font-weight:700; min-height:22px;}
+  .waiting-box{margin-top:40px; padding:30px; border-radius:18px; background:var(--card); border:1px dashed var(--card-border); max-width:360px; color:var(--lavender);}
   .swap-link{margin-top:30px; font-size:13px; color:var(--lavender-dim); text-decoration:underline;}
 
   @media (max-width:520px){
     .page{padding-top:70px;}
-    .pad{grid-template-columns:repeat(5,1fr); gap:9px;}
+    .pad{grid-template-columns:repeat(5,1fr); gap:10px;}
+    .pad-btn{font-size:26px; border-radius:16px;}
   }
 </style>
 </head>
@@ -265,43 +270,94 @@ const TEAMS = [
   "Lupii Cibinului","Legendele Brukenthal"
 ];
 const TEAM_ICONS = ["🦅","👁️","🌉","🏰","🗝️","⭐","🧭","🐺","👑"];
+const DEFAULT_ORDER = TEAMS.map((_,i)=>i);
 
 const JURY = [
-  {id:1, name:"Cristina Boeriu", r1:"Sincronizare cu originalul", r2:null},
-  {id:2, name:"Gorazd Pucelj",   r1:"Coregrafie",                 r2:"Dans"},
-  {id:3, name:"Andrei Corvin",   r1:"Costume",                    r2:null},
-  {id:4, name:"Alina Iosif",     r1:"Creativitate",                r2:null},
-  {id:5, name:"Ciprian Draghiceanu", r1:"Interpretare artistică",  r2:"Interpretare artistică (voce)"},
-  {id:6, name:"Sorin Dicu",      r1:"Umor",                       r2:null},
+  {id:1, name:"Cristina Boeriu",     r1:"Sincronizare cu originalul", r2:"Notă generală"},
+  {id:2, name:"Gorazd Pucelj",       r1:"Coregrafie",                 r2:"Notă generală"},
+  {id:3, name:"Andrei Corvin",       r1:"Costume",                    r2:"Notă generală"},
+  {id:4, name:"Alina Iosif",         r1:"Creativitate",               r2:"Notă generală"},
+  {id:5, name:"Ciprian Draghiceanu", r1:"Interpretare artistică",     r2:"Notă generală"},
+  {id:6, name:"Sorin Dicu",          r1:"Umor",                       r2:"Notă generală"},
 ];
 const ROUNDS = {
   1:{title:"Proba 1", subtitle:"Te cunosc de undeva", icon:"🎬"},
   2:{title:"Proba 2", subtitle:"Karaoke", icon:"🎤"},
 };
 
-function juryForRound(round){ return JURY.filter(j => (round===1 ? j.r1 : j.r2)); }
+/* EDIT ME: lista de piese pentru extragerea de la Karaoke.
+   Încarcă pozele în folderul /songs din repo (același nume ca "image"). */
+const SONGS = [
+  {id:1,  title:"Piesa Karaoke #1",  artist:"— completează —", image:"songs/song1.jpg"},
+  {id:2,  title:"Piesa Karaoke #2",  artist:"— completează —", image:"songs/song2.jpg"},
+  {id:3,  title:"Piesa Karaoke #3",  artist:"— completează —", image:"songs/song3.jpg"},
+  {id:4,  title:"Piesa Karaoke #4",  artist:"— completează —", image:"songs/song4.jpg"},
+  {id:5,  title:"Piesa Karaoke #5",  artist:"— completează —", image:"songs/song5.jpg"},
+  {id:6,  title:"Piesa Karaoke #6",  artist:"— completează —", image:"songs/song6.jpg"},
+  {id:7,  title:"Piesa Karaoke #7",  artist:"— completează —", image:"songs/song7.jpg"},
+  {id:8,  title:"Piesa Karaoke #8",  artist:"— completează —", image:"songs/song8.jpg"},
+  {id:9,  title:"Piesa Karaoke #9",  artist:"— completează —", image:"songs/song9.jpg"},
+  {id:10, title:"Piesa Karaoke #10", artist:"— completează —", image:"songs/song10.jpg"},
+  {id:11, title:"Piesa Karaoke #11", artist:"— completează —", image:"songs/song11.jpg"},
+  {id:12, title:"Piesa Karaoke #12", artist:"— completează —", image:"songs/song12.jpg"},
+];
+
 function criterionLabel(j, round){ return round===1 ? j.r1 : j.r2; }
-function maxForRound(round){ return juryForRound(round).length * 10; }
+function maxForRound(round){ return JURY.length * 10; }
+function currentTeamIndex(state){
+  const order = (state.order && state.order.length) ? state.order : DEFAULT_ORDER;
+  const pos = Math.min(Math.max(state.position||0,0), order.length-1);
+  return order[pos];
+}
+function computeTotals(scores){
+  return TEAMS.map((name, ti)=>{
+    let t=0;
+    JURY.forEach(j=>{
+      const v1 = scores[`1-${ti}-${j.id}`]; if(v1!==undefined) t+=v1;
+      const v2 = scores[`2-${ti}-${j.id}`]; if(v2!==undefined) t+=v2;
+    });
+    return {name, ti, icon:TEAM_ICONS[ti], total:t};
+  }).sort((a,b)=> b.total - a.total);
+}
+function shuffleArr(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
 
 /* ============== SUPABASE ============== */
 const SUPABASE_URL = 'https://oyagueepbzwwheuulenk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YWd1ZWVwYnp3d2hldXVsZW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTI2NDcsImV4cCI6MjEwMjc2ODY0N30._yajYcPIbR7hOPXZfK5OoaCVhUyrBmKF8Yawn5HdI_s';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ============== STORAGE HELPERS (Supabase) ============== */
+/* ============== STORAGE HELPERS ============== */
 async function getState(){
   try{
-    const {data, error} = await sb.from('superstars_control').select('team_index, round').eq('id','singleton').maybeSingle();
-    if(error || !data) return {teamIndex:0, round:1};
-    return {teamIndex:data.team_index, round:data.round};
-  }catch(e){ return {teamIndex:0, round:1}; }
+    const {data, error} = await sb.from('superstars_control')
+      .select('team_order, position, round, stage, video_url').eq('id','singleton').maybeSingle();
+    if(error || !data) return {order:DEFAULT_ORDER, position:0, round:1, stage:'name', video_url:null};
+    return {
+      order: (data.team_order && data.team_order.length) ? data.team_order : DEFAULT_ORDER,
+      position: data.position || 0,
+      round: data.round || 1,
+      stage: data.stage || 'name',
+      video_url: data.video_url || null,
+    };
+  }catch(e){ return {order:DEFAULT_ORDER, position:0, round:1, stage:'name', video_url:null}; }
 }
-async function setState(state){
+async function patchState(patch){
+  const cur = await getState();
+  const next = {...cur, ...patch};
   try{
-    await sb.from('superstars_control')
-      .update({team_index:state.teamIndex, round:state.round, updated_at:new Date().toISOString()})
-      .eq('id','singleton');
+    await sb.from('superstars_control').update({
+      team_order: next.order, position: next.position, round: next.round,
+      stage: next.stage, video_url: next.video_url, updated_at: new Date().toISOString()
+    }).eq('id','singleton');
   }catch(e){}
+  return next;
 }
 async function getScores(){
   try{
@@ -321,14 +377,26 @@ async function setScoreValue(round, teamIndex, juryId, value){
   return getScores();
 }
 async function resetTeamRound(round, teamIndex){
-  try{
-    await sb.from('superstars_scores').delete().eq('round', round).eq('team_index', teamIndex);
-  }catch(e){}
+  try{ await sb.from('superstars_scores').delete().eq('round', round).eq('team_index', teamIndex); }catch(e){}
 }
 async function resetEverything(){
   try{
     await sb.from('superstars_scores').delete().gte('round', 0);
-    await sb.from('superstars_control').update({team_index:0, round:1, updated_at:new Date().toISOString()}).eq('id','singleton');
+    await sb.from('superstars_songs').delete().gte('team_index', 0);
+    await sb.from('superstars_control').update({
+      team_order:DEFAULT_ORDER, position:0, round:1, stage:'name', video_url:null, updated_at:new Date().toISOString()
+    }).eq('id','singleton');
+  }catch(e){}
+}
+async function getSongAssignment(teamIndex){
+  try{
+    const {data} = await sb.from('superstars_songs').select('song_id').eq('team_index', teamIndex).maybeSingle();
+    return data ? data.song_id : null;
+  }catch(e){ return null; }
+}
+async function setSongAssignment(teamIndex, songId){
+  try{
+    await sb.from('superstars_songs').upsert({team_index:teamIndex, song_id:songId, updated_at:new Date().toISOString()});
   }catch(e){}
 }
 
@@ -346,8 +414,7 @@ function ringSVG(n, filledArr, size){
   }
   return `<svg viewBox="0 0 ${size} ${size}" class="ring-svg">${lines}<circle cx="${cx}" cy="${cy}" r="${(R*0.5).toFixed(1)}" class="ring-core"/>${dots}</svg>`;
 }
-
-function spawnSparkles(container){
+function spawnSparkles(){
   const icons = ['✨','⭐','🌟'];
   for(let i=0;i<10;i++){
     const s = document.createElement('div');
@@ -367,14 +434,12 @@ let pollTimer = null;
 let lastScreenComplete = false;
 
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-
 window.addEventListener('hashchange', render);
 window.addEventListener('DOMContentLoaded', render);
 
 function route(){
   const h = (location.hash || '#/').replace('#','');
-  const parts = h.split('/').filter(Boolean);
-  return parts;
+  return h.split('/').filter(Boolean);
 }
 
 async function render(){
@@ -401,21 +466,9 @@ function renderHome(){
       <h1>SUPER STARS<br>NIGHT</h1>
       <div class="sub">Aplicație de jurizare live</div>
       <div class="cards">
-        <a class="nav-card" href="#/screen">
-          <div class="ic">📺</div>
-          <div class="t">Ecran principal</div>
-          <div class="d">Pentru televizor / ecran mare</div>
-        </a>
-        <a class="nav-card" href="#/control">
-          <div class="ic">🎛️</div>
-          <div class="t">Panou de control</div>
-          <div class="d">Alege echipa &amp; proba curentă</div>
-        </a>
-        <a class="nav-card" href="#/jury">
-          <div class="ic">🎤</div>
-          <div class="t">Juriu</div>
-          <div class="d">Tabletă individuală de notare</div>
-        </a>
+        <a class="nav-card" href="#/screen"><div class="ic">📺</div><div class="t">Ecran principal</div><div class="d">Pentru televizor / ecran mare</div></a>
+        <a class="nav-card" href="#/control"><div class="ic">🎛️</div><div class="t">Panou de control</div><div class="d">Regie: ordine, video, piese, scoruri</div></a>
+        <a class="nav-card" href="#/jury"><div class="ic">🎤</div><div class="t">Juriu</div><div class="d">Tabletă individuală de notare</div></a>
       </div>
     </div>`;
 }
@@ -423,16 +476,70 @@ function renderHome(){
 /* ============== SCREEN ============== */
 async function renderScreen(){
   const state = await getState();
+  const teamIndex = currentTeamIndex(state);
+  const round = state.round, stage = state.stage;
+
+  if(stage==='leaderboard'){
+    const scores = await getScores();
+    const totals = computeTotals(scores);
+    app.innerHTML = `
+      <div class="lb-screen">
+        <h1>🏆 Clasament Final</h1>
+        <div class="lb-list">
+          ${totals.map((t,i)=>`
+            <div class="lb-row${i===0?' top1':''}">
+              <div class="rk">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</div>
+              <div class="nm">${t.icon} ${t.name}</div>
+              <div class="tt num">${t.total}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  if(stage==='name'){
+    app.innerHTML = `
+      <div class="screen-name">
+        <div class="tag">${ROUNDS[round].icon} ${ROUNDS[round].subtitle}</div>
+        <div class="ic">${TEAM_ICONS[teamIndex]}</div>
+        <h1>${TEAMS[teamIndex]}</h1>
+      </div>`;
+    return;
+  }
+
+  if(stage==='video'){
+    app.innerHTML = `
+      <div class="screen-video">
+        ${state.video_url
+          ? `<video src="${state.video_url}" autoplay controls playsinline></video>`
+          : `<div class="empty">Niciun videoclip setat încă din panoul de control.</div>`}
+      </div>`;
+    return;
+  }
+
+  if(stage==='song'){
+    const songId = await getSongAssignment(teamIndex);
+    const song = SONGS.find(s=>s.id===songId);
+    app.innerHTML = `
+      <div class="screen-song">
+        <div class="who">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]}</div>
+        <div class="tag">🎵 Piesa extrasă</div>
+        ${song
+          ? `<div class="title">${song.title}</div>
+             <div class="artist">${song.artist}</div>
+             <img src="${song.image}" alt="${song.title}" onerror="this.style.display='none'">`
+          : `<div class="title" style="font-size:26px;color:var(--lavender);">Piesa nu a fost atribuită încă</div>`}
+      </div>`;
+    return;
+  }
+
+  // stage === 'scores'
   const scores = await getScores();
-  const round = state.round, teamIndex = state.teamIndex;
-  const jList = juryForRound(round);
-  const filledArr = jList.map(j => scores[`${round}-${teamIndex}-${j.id}`] !== undefined);
-  const total = jList.reduce((s,j)=> s + (scores[`${round}-${teamIndex}-${j.id}`] || 0), 0);
-  const max = maxForRound(round);
-  const isComplete = jList.length>0 && filledArr.every(Boolean);
+  const filledArr = JURY.map(j => scores[`${round}-${teamIndex}-${j.id}`] !== undefined);
+  const total = JURY.reduce((s,j)=> s + (scores[`${round}-${teamIndex}-${j.id}`] || 0), 0);
+  const isComplete = filledArr.every(Boolean);
 
   app.innerHTML = `
-    <a class="corner-btn" href="#/">← meniu</a>
     <div class="screen-wrap">
       <div class="screen-eyebrow">${ROUNDS[round].icon} ${ROUNDS[round].title}</div>
       <div class="round-badge">${ROUNDS[round].subtitle}</div>
@@ -441,14 +548,14 @@ async function renderScreen(){
         <h1>${TEAMS[teamIndex]}</h1>
       </div>
       <div class="ring-zone">
-        ${ringSVG(jList.length, filledArr)}
+        ${ringSVG(JURY.length, filledArr)}
         <div class="ring-total">
-          <div class="n num">${total}<span style="opacity:.5;font-size:.5em;"> / ${max}</span></div>
+          <div class="n num">${total}</div>
           <div class="lbl">puncte</div>
         </div>
       </div>
       <div class="crit-grid">
-        ${jList.map(j=>{
+        ${JURY.map(j=>{
           const v = scores[`${round}-${teamIndex}-${j.id}`];
           const has = v!==undefined;
           return `<div class="crit-card${has?' filled':''}">
@@ -468,18 +575,11 @@ async function renderScreen(){
 async function renderControl(){
   const state = await getState();
   const scores = await getScores();
-  const round = state.round, teamIndex = state.teamIndex;
-  const jList = juryForRound(round);
-
-  // leaderboard totals across both rounds
-  const totals = TEAMS.map((name, ti)=>{
-    let t=0;
-    JURY.forEach(j=>{
-      const v1 = scores[`1-${ti}-${j.id}`]; if(v1!==undefined) t+=v1;
-      const v2 = scores[`2-${ti}-${j.id}`]; if(v2!==undefined) t+=v2;
-    });
-    return {name, ti, icon:TEAM_ICONS[ti], total:t};
-  }).sort((a,b)=> b.total - a.total);
+  const round = state.round;
+  const order = state.order;
+  const teamIndex = currentTeamIndex(state);
+  const currentSongId = await getSongAssignment(teamIndex);
+  const totals = computeTotals(scores);
 
   app.innerHTML = `
     <a class="corner-btn" href="#/">← meniu</a>
@@ -494,6 +594,20 @@ async function renderControl(){
         ${[1,2].map(r=>`<button class="tab${r===round?' active':''}" data-round="${r}">${ROUNDS[r].icon} ${ROUNDS[r].title} · ${ROUNDS[r].subtitle}</button>`).join('')}
       </div>
 
+      <div class="panel">
+        <h3><span>🎲 Ordinea de intrare</span><button class="mini-btn" id="shuffleBtn">Amestecă aleator</button></h3>
+        ${order.map((ti, idx)=>`
+          <div class="order-row">
+            <div class="order-pos">${idx+1}</div>
+            <div class="order-team">${TEAM_ICONS[ti]} ${TEAMS[ti]}</div>
+            <div class="order-actions">
+              <button class="order-btn" data-move="up" data-idx="${idx}" ${idx===0?'disabled':''}>▲</button>
+              <button class="order-btn" data-move="down" data-idx="${idx}" ${idx===order.length-1?'disabled':''}>▼</button>
+            </div>
+          </div>`).join('')}
+        <div class="hint">Setează ordinea după tragerea la sorți, înainte de a începe spectacolul.</div>
+      </div>
+
       <div class="stepper">
         <button class="step-btn" id="prevTeam">◀ Echipa anterioară</button>
         <button class="step-btn" id="nextTeam">Echipa următoare ▶</button>
@@ -501,33 +615,54 @@ async function renderControl(){
 
       <div class="team-grid">
         ${TEAMS.map((name,ti)=>{
-          const done = jList.length>0 && jList.every(j => scores[`${round}-${ti}-${j.id}`]!==undefined);
+          const done = JURY.every(j => scores[`${round}-${ti}-${j.id}`]!==undefined);
+          const pos = order.indexOf(ti);
           return `<button class="team-pick${ti===teamIndex?' active':''}${done?' done':''}" data-team="${ti}">
             <span class="ic">${TEAM_ICONS[ti]}</span>${name}
-            <span class="status">${done?'✓ notat':'—'}</span>
+            <span class="status">#${pos+1} · ${done?'✓ notat':'—'}</span>
           </button>`;
         }).join('')}
       </div>
 
       <div class="panel">
-        <h3>
-          <span>${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}</span>
-          <button class="mini-btn" id="resetTeamBtn">Resetează scor</button>
-        </h3>
-        ${jList.length===0 ? `<div style="color:var(--lavender-dim);font-size:14px;">Niciun criteriu de jurizare pentru această probă.</div>` :
-          jList.map(j=>{
-            const v = scores[`${round}-${teamIndex}-${j.id}`];
-            const has = v!==undefined;
-            return `<div class="crit-row">
-              <div><div class="who">${j.name}</div><div class="what">${criterionLabel(j,round)}</div></div>
-              <div class="val${has?'':' pending'}">${has? v : 'în așteptare'}</div>
-            </div>`;
-          }).join('')
-        }
+        <h3><span>${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}</span></h3>
+        <div class="stage-btns">
+          <button class="stage-btn${state.stage==='name'?' active':''}" data-stage="name">👤 Arată doar numele</button>
+          <button class="stage-btn${state.stage==='scores'?' active':''}" data-stage="scores">🧮 Arată scorurile</button>
+        </div>
+
+        <div class="hint" style="margin-top:0;margin-bottom:6px;">🎬 Videoclip (nume fișier din repo, ex: <code>videos/echipa1.mp4</code>, sau URL complet)</div>
+        <div class="field-row">
+          <input type="text" id="videoUrlInput" placeholder="videos/echipa1.mp4" value="${state.video_url || ''}">
+          <button class="go-btn" id="playVideoBtn">▶️ Redă pe ecran</button>
+        </div>
+
+        <div class="hint" style="margin-top:20px;margin-bottom:6px;">🎵 Piesă Karaoke extrasă de echipă</div>
+        <div class="field-row">
+          <select id="songSelect">
+            <option value="">— fără piesă —</option>
+            ${SONGS.map(s=>`<option value="${s.id}" ${currentSongId===s.id?'selected':''}>${s.title} — ${s.artist}</option>`).join('')}
+          </select>
+          <button class="save-btn" id="saveSongBtn">💾 Salvează</button>
+          <button class="go-btn" id="showSongBtn">📺 Afișează pe ecran</button>
+        </div>
+
+        <div class="crit-row" style="margin-top:22px; border-bottom:none; font-weight:700; color:var(--lavender-dim); font-size:12px; text-transform:uppercase; letter-spacing:.1em;">Scoruri curente</div>
+        ${JURY.map(j=>{
+          const v = scores[`${round}-${teamIndex}-${j.id}`];
+          const has = v!==undefined;
+          return `<div class="crit-row">
+            <div><div class="who">${j.name}</div><div class="what">${criterionLabel(j,round)}</div></div>
+            <div class="val${has?'':' pending'}">${has? v : 'în așteptare'}</div>
+          </div>`;
+        }).join('')}
+        <div style="text-align:right;margin-top:10px;">
+          <button class="mini-btn" id="resetTeamBtn">Resetează scorul acestei probe</button>
+        </div>
       </div>
 
       <div class="panel">
-        <h3><span>🏆 Clasament general</span></h3>
+        <h3><span>🏆 Clasament general</span><button class="go-btn" id="showLbBtn">📺 Arată pe ecran</button></h3>
         <table class="board">
           <thead><tr><th>#</th><th>Echipă</th><th>Total</th></tr></thead>
           <tbody>
@@ -541,23 +676,69 @@ async function renderControl(){
       </div>
 
       <div class="danger-zone">
-        <button class="danger-btn" id="resetAllBtn">Resetează tot evenimentul</button>
+        <button class="danger-btn" id="resetAllBtn">Resetează tot evenimentul (scoruri, ordine, piese)</button>
       </div>
     </div>`;
 
   app.querySelectorAll('.tab').forEach(btn=>{
-    btn.onclick = async ()=>{ await setState({teamIndex, round:parseInt(btn.dataset.round,10)}); renderControl(); };
+    btn.onclick = async ()=>{ await patchState({round:parseInt(btn.dataset.round,10), stage:'name', video_url:null}); renderControl(); };
   });
+  app.querySelectorAll('.order-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const idx = parseInt(btn.dataset.idx,10);
+      const dir = btn.dataset.move;
+      const swapWith = dir==='up'? idx-1 : idx+1;
+      if(swapWith<0 || swapWith>=order.length) return;
+      const newOrder = [...order];
+      [newOrder[idx], newOrder[swapWith]] = [newOrder[swapWith], newOrder[idx]];
+      await patchState({order:newOrder});
+      renderControl();
+    };
+  });
+  app.querySelector('#shuffleBtn').onclick = async ()=>{
+    if(confirm('Amesteci aleator ordinea de intrare pentru toate echipele?')){
+      await patchState({order:shuffleArr(order), position:0, stage:'name', video_url:null});
+      renderControl();
+    }
+  };
   app.querySelectorAll('.team-pick').forEach(btn=>{
-    btn.onclick = async ()=>{ await setState({teamIndex:parseInt(btn.dataset.team,10), round}); renderControl(); };
+    btn.onclick = async ()=>{
+      const ti = parseInt(btn.dataset.team,10);
+      const pos = order.indexOf(ti);
+      await patchState({position: pos<0?0:pos, stage:'name', video_url:null});
+      renderControl();
+    };
   });
   app.querySelector('#prevTeam').onclick = async ()=>{
-    const ni = (teamIndex - 1 + TEAMS.length) % TEAMS.length;
-    await setState({teamIndex:ni, round}); renderControl();
+    const pos = Math.min(Math.max(state.position||0,0), order.length-1);
+    const np = (pos - 1 + order.length) % order.length;
+    await patchState({position:np, stage:'name', video_url:null}); renderControl();
   };
   app.querySelector('#nextTeam').onclick = async ()=>{
-    const ni = (teamIndex + 1) % TEAMS.length;
-    await setState({teamIndex:ni, round}); renderControl();
+    const pos = Math.min(Math.max(state.position||0,0), order.length-1);
+    const np = (pos + 1) % order.length;
+    await patchState({position:np, stage:'name', video_url:null}); renderControl();
+  };
+  app.querySelectorAll('.stage-btn').forEach(btn=>{
+    btn.onclick = async ()=>{ await patchState({stage:btn.dataset.stage}); renderControl(); };
+  });
+  app.querySelector('#playVideoBtn').onclick = async ()=>{
+    const url = document.getElementById('videoUrlInput').value.trim();
+    await patchState({stage:'video', video_url:url}); renderControl();
+  };
+  app.querySelector('#saveSongBtn').onclick = async ()=>{
+    const val = document.getElementById('songSelect').value;
+    await setSongAssignment(teamIndex, val ? parseInt(val,10) : null);
+    renderControl();
+  };
+  app.querySelector('#showSongBtn').onclick = async ()=>{
+    const val = document.getElementById('songSelect').value;
+    await setSongAssignment(teamIndex, val ? parseInt(val,10) : null);
+    await patchState({stage:'song'});
+    renderControl();
+  };
+  app.querySelector('#showLbBtn').onclick = async ()=>{
+    await patchState({stage:'leaderboard'}); renderControl();
   };
   app.querySelector('#resetTeamBtn').onclick = async ()=>{
     if(confirm(`Resetezi scorurile pentru ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}?`)){
@@ -565,7 +746,7 @@ async function renderControl(){
     }
   };
   app.querySelector('#resetAllBtn').onclick = async ()=>{
-    if(confirm('Sigur resetezi TOATE scorurile și echipa curentă? Acțiunea nu poate fi anulată.')){
+    if(confirm('Sigur resetezi TOT: scoruri, ordine de intrare și piese atribuite? Nu poate fi anulat.')){
       await resetEverything(); renderControl();
     }
   };
@@ -576,16 +757,13 @@ function renderJurySelect(){
   app.innerHTML = `
     <a class="corner-btn" href="#/">← meniu</a>
     <div class="page">
-      <div class="page-header">
-        <div class="eyebrow">Juriu</div>
-        <h2>Alege-ți numele</h2>
-      </div>
+      <div class="page-header"><div class="eyebrow">Juriu</div><h2>Alege-ți numele</h2></div>
       <div class="jury-grid">
         ${JURY.map(j=>`
           <a class="jury-card" href="#/jury/${j.id}">
             <div class="nm">${j.name}</div>
             <div class="cr">Proba 1: <b>${j.r1}</b></div>
-            <div class="cr">Proba 2: ${j.r2 ? `<b>${j.r2}</b>` : 'nu notează'}</div>
+            <div class="cr">Proba 2: <b>${j.r2}</b></div>
           </a>`).join('')}
       </div>
     </div>`;
@@ -595,34 +773,19 @@ function renderJurySelect(){
 let jurySelectedScore = null;
 let juryLastKey = null;
 
-async function renderJuryScore(jid, isPoll){
+async function renderJuryScore(jid){
   const j = JURY.find(x=>x.id===jid);
   if(!j){ renderJurySelect(); return; }
   const state = await getState();
-  const round = state.round, teamIndex = state.teamIndex;
+  const teamIndex = currentTeamIndex(state);
+  const round = state.round;
   const criterion = criterionLabel(j, round);
   const key = `${round}-${teamIndex}-${j.id}`;
 
   if(key !== juryLastKey){
-    // team/round changed: reload existing score (if any) for this exact combo
     const scores = await getScores();
     jurySelectedScore = scores[key] !== undefined ? scores[key] : null;
     juryLastKey = key;
-  }
-
-  if(!criterion){
-    app.innerHTML = `
-      <a class="corner-btn" href="#/jury">← schimbă juriul</a>
-      <div class="jscore">
-        <div class="jname">${j.name}</div>
-        <div class="jcrit" style="color:var(--lavender);">Nu notezi în această probă</div>
-        <div class="jteam-tag">
-          <div class="lbl">${ROUNDS[round].icon} ${ROUNDS[round].title} — ${ROUNDS[round].subtitle}</div>
-          <div class="val">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]}</div>
-        </div>
-        <div class="waiting-box">Așteaptă următoarea probă sau următoarea echipă — ecranul se actualizează automat.</div>
-      </div>`;
-    return;
   }
 
   app.innerHTML = `
