@@ -10,12 +10,19 @@
 <style>
   body { font-family: 'Open Sans', Arial, sans-serif; }
   .font-display { font-family: 'Cormorant Garamond', serif; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  #chatPanel { animation: slideUp 0.2s ease-out; }
+  .toast { animation: toastIn 0.25s ease-out; }
 </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[#f8faf9] via-[#e8f3ec] to-[#eef8f0] p-4 sm:p-8">
 
-<div id="app" class="max-w-2xl mx-auto"></div>
+<div id="app" class="max-w-2xl mx-auto pb-24"></div>
+<div id="chatWidgetRoot"></div>
+<div id="toastRoot" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
+<!-- ⚠️ CONFIGURARE: completează cu datele proiectului tău Supabase -->
 <script>
   window.SUPABASE_URL = "https://oyagueepbzwwheuulenk.supabase.co";
   window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YWd1ZWVwYnp3d2hldXVsZW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTI2NDcsImV4cCI6MjEwMjc2ODY0N30._yajYcPIbR7hOPXZfK5OoaCVhUyrBmKF8Yawn5HdI_s";
@@ -25,6 +32,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+// --- Parole (aceleași pentru toate echipele momentan) ---
+const TEAM_PASSWORD = "Echipa";
+const REFEREE_PASSWORD = "Arbitru";
 
 const TEAMS = [
   { id: "soimii", emoji: "🦅", name: "Șoimii Turnului" },
@@ -38,7 +49,6 @@ const TEAMS = [
   { id: "legendele", emoji: "👑", name: "Legendele Brukenthal" },
 ];
 
-// --- Obiectivele reale ale vânătorii ---
 const TASKS = [
   { id: "t1", title: "Obiectiv 1 - Turnul Sfatului", points: 10,
     prompt: "Găsiți Turnul Sfatului. Faceți o fotografie de echipă cu turnul în fundal.",
@@ -73,14 +83,165 @@ const HUNT_ITEMS = [
 ];
 const HUNT_POINTS = 5;
 
-const TASKS_MAX = TASKS.reduce((s, t) => s + t.points, 0);
-const HUNT_MAX = HUNT_ITEMS.length * HUNT_POINTS;
-const TOTAL_MAX = TASKS_MAX + HUNT_MAX;
-
 const app = document.getElementById("app");
-let state = { role: null, team: null };
+let state = { role: null, team: null, authed: false };
 let realtimeChannel = null;
 
+// ---------- CHAT WIDGET (floating, separate from page content) ----------
+const chatRoot = document.getElementById("chatWidgetRoot");
+const toastRoot = document.getElementById("toastRoot");
+let chatCtx = null; // { teamId, viewerRole, counterpartLabel, counterpartEmoji }
+let chatMessages = [];
+let chatOpen = false;
+let unreadCount = 0;
+let chatRealtimeChannel = null;
+let chatPollId = null;
+
+function showToast(text) {
+  const el = document.createElement("div");
+  el.className = "toast bg-white border border-gray-200 shadow-lg rounded-xl px-4 py-3 max-w-xs text-sm flex items-start gap-2";
+  el.innerHTML = `<span class="text-lg">💬</span><span class="text-gray-700">${escapeHtml(text)}</span>`;
+  toastRoot.appendChild(el);
+  setTimeout(() => { el.style.transition = "opacity 0.4s"; el.style.opacity = "0"; setTimeout(() => el.remove(), 400); }, 4000);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderChatWidget() {
+  if (!chatCtx) { chatRoot.innerHTML = ""; return; }
+  chatRoot.innerHTML = `
+    <div class="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+      <div id="chatPanel" class="hidden w-80 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div class="bg-gradient-to-r from-[#009639] to-[#007a2e] text-white px-4 py-3 flex items-center gap-2">
+          <span class="text-xl">${chatCtx.counterpartEmoji}</span>
+          <div>
+            <div class="text-xs uppercase tracking-wide opacity-80 font-bold">Conversație cu</div>
+            <div class="font-bold text-sm">${chatCtx.counterpartLabel}</div>
+          </div>
+          <button id="chatCloseBtn" class="ml-auto text-white/80 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+        <div id="chatMessages" class="h-72 overflow-y-auto flex flex-col gap-2 p-3"></div>
+        <div class="flex gap-2 p-3 border-t border-gray-100">
+          <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
+          <button id="chatSend" class="px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
+        </div>
+      </div>
+      <button id="chatBubbleBtn" class="relative w-14 h-14 rounded-full bg-[#009639] text-white text-2xl shadow-xl hover:bg-[#007a2e] transition-colors flex items-center justify-center">
+        🔔
+        <span id="chatBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${unreadCount > 0 ? "" : "hidden"}">${unreadCount}</span>
+      </button>
+    </div>`;
+
+  document.getElementById("chatBubbleBtn").onclick = toggleChatPanel;
+  document.getElementById("chatCloseBtn").onclick = () => { chatOpen = false; syncChatPanelVisibility(); };
+  document.getElementById("chatSend").onclick = sendChatMessage;
+  document.getElementById("chatInput").onkeydown = (e) => { if (e.key === "Enter") sendChatMessage(); };
+
+  drawChatMessages();
+}
+
+function syncChatPanelVisibility() {
+  const panel = document.getElementById("chatPanel");
+  if (!panel) return;
+  panel.classList.toggle("hidden", !chatOpen);
+  if (chatOpen) {
+    unreadCount = 0;
+    const badge = document.getElementById("chatBadge");
+    if (badge) badge.classList.add("hidden");
+    const box = document.getElementById("chatMessages");
+    if (box) box.scrollTop = box.scrollHeight;
+  }
+}
+
+function toggleChatPanel() {
+  chatOpen = !chatOpen;
+  syncChatPanelVisibility();
+}
+
+function drawChatMessages() {
+  const box = document.getElementById("chatMessages");
+  if (!box || !chatCtx) return;
+  if (chatMessages.length === 0) {
+    box.innerHTML = `<div class="text-xs text-gray-400 text-center mt-6">Niciun mesaj încă. Scrie primul!</div>`;
+    return;
+  }
+  box.innerHTML = chatMessages.map(m => {
+    const mine = m.sender === chatCtx.viewerRole;
+    const label = m.sender === "referee" ? "Arbitru" : "Echipă";
+    return `
+      <div class="flex ${mine ? "justify-end" : "justify-start"}">
+        <div class="max-w-[80%] rounded-xl px-3 py-2 text-sm ${mine ? "bg-[#009639] text-white" : "bg-gray-100 text-gray-700"}">
+          <div class="text-[10px] uppercase tracking-wide font-bold opacity-70 mb-0.5">${label}</div>
+          ${escapeHtml(m.content)}
+        </div>
+      </div>`;
+  }).join("");
+  if (chatOpen) box.scrollTop = box.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById("chatInput");
+  const text = input.value.trim();
+  if (!text || !chatCtx) return;
+  input.value = "";
+  try {
+    await supabase.from("messages").insert({ team_id: chatCtx.teamId, sender: chatCtx.viewerRole, content: text });
+  } catch (e) { console.error(e); }
+}
+
+async function loadChatHistory(teamId) {
+  const { data, error } = await supabase.from("messages").select("*").eq("team_id", teamId).order("created_at", { ascending: true });
+  if (error) { console.error(e); return []; }
+  return data;
+}
+
+function teardownChat() {
+  if (chatRealtimeChannel) { supabase.removeChannel(chatRealtimeChannel); chatRealtimeChannel = null; }
+  if (chatPollId) { clearInterval(chatPollId); chatPollId = null; }
+  chatCtx = null;
+  chatMessages = [];
+  chatOpen = false;
+  unreadCount = 0;
+  chatRoot.innerHTML = "";
+}
+
+async function setupChat(teamId, viewerRole, counterpartLabel, counterpartEmoji) {
+  teardownChat();
+  chatCtx = { teamId, viewerRole, counterpartLabel, counterpartEmoji };
+  chatMessages = await loadChatHistory(teamId);
+  renderChatWidget();
+
+  chatRealtimeChannel = supabase
+    .channel(`chat-${teamId}-${viewerRole}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `team_id=eq.${teamId}` }, (payload) => {
+      chatMessages.push(payload.new);
+      drawChatMessages();
+      if (payload.new.sender !== viewerRole) {
+        if (!chatOpen) {
+          unreadCount += 1;
+          const badge = document.getElementById("chatBadge");
+          if (badge) { badge.textContent = unreadCount; badge.classList.remove("hidden"); }
+        }
+        const fromLabel = payload.new.sender === "referee" ? "Arbitru" : counterpartLabel;
+        showToast(`Mesaj nou de la ${fromLabel}: "${payload.new.content.slice(0, 60)}"`);
+      }
+    })
+    .subscribe();
+
+  chatPollId = setInterval(async () => {
+    const fresh = await loadChatHistory(teamId);
+    if (fresh.length !== chatMessages.length) {
+      chatMessages = fresh;
+      drawChatMessages();
+    }
+  }, 8000);
+}
+
+// ---------- HELPERS ----------
 function headerHtml(title, subtitle, showBack) {
   return `
     <div class="relative overflow-hidden rounded-2xl mb-6" style="background: linear-gradient(135deg, #0b1f3a 0%, #123a2b 100%);">
@@ -97,7 +258,7 @@ function statusPillHtml(score, maxPoints, hasSubmission) {
   if (score !== null && score !== undefined) {
     const won = score >= maxPoints;
     return `<span class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full ${won ? "bg-[#e8f5ed] text-[#007a2e]" : "bg-red-50 text-red-600"}">
-      ${won ? "★" : "✕"} ${score}/${maxPoints}
+      ${won ? "★" : "✕"} ${score} pct
     </span>`;
   }
   if (hasSubmission) {
@@ -107,15 +268,13 @@ function statusPillHtml(score, maxPoints, hasSubmission) {
 }
 
 function cleanupRealtime() {
-  if (realtimeChannel) {
-    supabase.removeChannel(realtimeChannel);
-    realtimeChannel = null;
-  }
+  if (realtimeChannel) { supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
 }
 
 // ---------- ROLE SELECT ----------
 function renderRoleSelect() {
   cleanupRealtime();
+  teardownChat();
   app.innerHTML = `
     ${headerHtml("Let's Go Team", "Sibiu 2026 · Treasure Hunt", false)}
     <p class="text-center text-gray-500 mb-6">Alege spațiul tău</p>
@@ -142,8 +301,8 @@ function renderRoleSelect() {
         </div>
       </button>
     </div>`;
-  document.getElementById("rolePlayer").onclick = () => { state.role = "player"; renderTeamPicker(); };
-  document.getElementById("roleReferee").onclick = () => { state.role = "referee"; renderTeamPicker(); };
+  document.getElementById("rolePlayer").onclick = () => { state = { role: "player", team: null, authed: false }; renderTeamPicker(); };
+  document.getElementById("roleReferee").onclick = () => { state = { role: "referee", team: null, authed: false }; renderTeamPicker(); };
   document.getElementById("roleBoard").onclick = () => { renderLeaderboard(); };
 }
 
@@ -166,10 +325,41 @@ function renderTeamPicker() {
   document.querySelectorAll(".teamBtn").forEach(btn => {
     btn.onclick = () => {
       state.team = TEAMS.find(t => t.id === btn.dataset.team);
-      if (state.role === "player") renderPlayerScreen();
-      else renderRefereeScreen();
+      renderPasswordGate();
     };
   });
+}
+
+// ---------- PASSWORD GATE ----------
+function renderPasswordGate() {
+  const isPlayer = state.role === "player";
+  const team = state.team;
+  app.innerHTML = `
+    ${headerHtml(`${team.emoji} ${team.name}`, isPlayer ? "Parola echipei" : "Parola arbitrilor", true)}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+      <div class="text-4xl mb-3">🔒</div>
+      <p class="text-gray-600 mb-4 text-sm">Introduceți parola pentru a continua.</p>
+      <input id="pwInput" type="password" class="w-full text-center text-lg border-2 border-gray-200 rounded-lg px-3 py-3 mb-3 focus:border-[#009639] focus:outline-none" placeholder="Parolă">
+      <div id="pwError" class="text-red-500 text-sm mb-3 hidden">Parolă greșită — încearcă din nou.</div>
+      <button id="pwSubmit" class="w-full px-4 py-3 rounded-lg bg-[#009639] text-white font-semibold hover:bg-[#007a2e] transition-colors">Intră</button>
+    </div>`;
+  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+
+  const input = document.getElementById("pwInput");
+  const submit = () => {
+    const expected = isPlayer ? TEAM_PASSWORD : REFEREE_PASSWORD;
+    if (input.value === expected) {
+      state.authed = true;
+      if (isPlayer) renderPlayerScreen(); else renderRefereeScreen();
+    } else {
+      document.getElementById("pwError").classList.remove("hidden");
+      input.value = "";
+      input.focus();
+    }
+  };
+  document.getElementById("pwSubmit").onclick = submit;
+  input.onkeydown = (e) => { if (e.key === "Enter") submit(); };
+  input.focus();
 }
 
 // ---------- DATA HELPERS ----------
@@ -225,6 +415,7 @@ async function computeLeaderboard() {
 
 async function renderLeaderboard() {
   cleanupRealtime();
+  teardownChat();
   app.innerHTML = headerHtml("🏆 Clasament live", "Se actualizează automat", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
   document.getElementById("backBtn").onclick = () => { renderRoleSelect(); };
@@ -238,7 +429,7 @@ async function renderLeaderboard() {
           <div class="w-8 text-center font-bold text-gray-500">${medal}</div>
           <div class="text-2xl">${t.emoji}</div>
           <div class="flex-1 font-semibold text-gray-800">${t.name}</div>
-          <div class="font-bold text-[#009639] text-lg">${t.score} <span class="text-xs text-gray-400 font-normal">/ ${TOTAL_MAX}</span></div>
+          <div class="font-bold text-[#009639] text-lg">${t.score} pct</div>
         </div>`;
     }).join("");
     app.innerHTML = headerHtml("🏆 Clasament live", "Se actualizează automat", true) + `<div>${rows}</div>`;
@@ -252,86 +443,9 @@ async function renderLeaderboard() {
     .on("postgres_changes", { event: "*", schema: "public", table: "submissions" }, draw)
     .subscribe();
 
-  // safety-net polling in case realtime isn't enabled on the project
   const pollId = setInterval(draw, 6000);
   const origCleanup = cleanupRealtime;
   cleanupRealtime = () => { clearInterval(pollId); origCleanup(); cleanupRealtime = origCleanup; };
-}
-
-// ---------- CHAT ----------
-function chatSectionHtml() {
-  return `
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mt-6">
-      <div class="font-bold text-gray-800 mb-3">💬 Chat cu arbitrul</div>
-      <div id="chatMessages" class="h-56 overflow-y-auto flex flex-col gap-2 mb-3 pr-1"></div>
-      <div class="flex gap-2">
-        <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
-        <button id="chatSend" class="px-4 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">Trimite</button>
-      </div>
-    </div>`;
-}
-
-async function loadChat(teamId) {
-  const { data, error } = await supabase.from("messages").select("*").eq("team_id", teamId).order("created_at", { ascending: true });
-  if (error) { console.error(error); return []; }
-  return data;
-}
-
-function drawChatMessages(messages, viewerRole) {
-  const box = document.getElementById("chatMessages");
-  if (!box) return;
-  box.innerHTML = messages.map(m => {
-    const mine = m.sender === viewerRole;
-    const label = m.sender === "referee" ? "Arbitru" : "Echipă";
-    return `
-      <div class="flex ${mine ? "justify-end" : "justify-start"}">
-        <div class="max-w-[75%] rounded-xl px-3 py-2 text-sm ${mine ? "bg-[#009639] text-white" : "bg-gray-100 text-gray-700"}">
-          <div class="text-[10px] uppercase tracking-wide font-bold opacity-70 mb-0.5">${label}</div>
-          ${escapeHtml(m.content)}
-        </div>
-      </div>`;
-  }).join("");
-  box.scrollTop = box.scrollHeight;
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function wireChat(teamId, viewerRole) {
-  let messages = [];
-  loadChat(teamId).then(m => { messages = m; drawChatMessages(messages, viewerRole); });
-
-  const input = document.getElementById("chatInput");
-  const sendBtn = document.getElementById("chatSend");
-
-  const send = async () => {
-    const text = input.value.trim();
-    if (!text) return;
-    input.value = "";
-    try {
-      await supabase.from("messages").insert({ team_id: teamId, sender: viewerRole, content: text });
-    } catch (e) { console.error(e); }
-  };
-  sendBtn.onclick = send;
-  input.onkeydown = (e) => { if (e.key === "Enter") send(); };
-
-  const channel = supabase
-    .channel(`chat-${teamId}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `team_id=eq.${teamId}` }, (payload) => {
-      messages.push(payload.new);
-      drawChatMessages(messages, viewerRole);
-    })
-    .subscribe();
-
-  const pollId = setInterval(async () => {
-    messages = await loadChat(teamId);
-    drawChatMessages(messages, viewerRole);
-  }, 8000);
-
-  return () => { clearInterval(pollId); supabase.removeChannel(channel); };
 }
 
 // ---------- PLAYER SCREEN ----------
@@ -340,10 +454,11 @@ async function renderPlayerScreen() {
   const team = state.team;
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
 
   const submissions = await fetchSubmissions(team.id);
   drawPlayerTasks(team, submissions);
+  setupChat(team.id, "player", "Arbitru", "🛡️");
 }
 
 function drawPlayerTasks(team, submissions) {
@@ -353,7 +468,7 @@ function drawPlayerTasks(team, submissions) {
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between">
       <div>
         <div class="text-xs uppercase tracking-wide text-gray-400 font-bold">Scor curent</div>
-        <div class="text-2xl font-bold text-[#009639]">${totalScore} <span class="text-sm text-gray-400 font-normal">/ ${TOTAL_MAX}</span></div>
+        <div class="text-2xl font-bold text-[#009639]">${totalScore} pct</div>
       </div>
       <button id="viewBoardBtn" class="text-sm font-semibold text-[#7a8c00] hover:underline">🏆 Vezi clasamentul</button>
     </div>`;
@@ -423,12 +538,11 @@ function drawPlayerTasks(team, submissions) {
     </div>`;
 
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
-    summary + taskCards + huntCard + chatSectionHtml();
+    summary + taskCards + huntCard;
 
-  document.getElementById("backBtn").onclick = () => { cleanupRealtime(); state.team = null; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
 
-  // wire photo/text submit handlers for each task
   document.querySelectorAll("[data-task]").forEach(card => {
     const taskId = card.dataset.task;
     const isHunt = taskId.startsWith("hunt-");
@@ -447,9 +561,7 @@ function drawPlayerTasks(team, submissions) {
       try {
         const url = await uploadPhoto(team.id, taskId, file);
         let content = url;
-        if (needsText) {
-          content = JSON.stringify({ url, answer: textInput ? textInput.value.trim() : "" });
-        }
+        if (needsText) content = JSON.stringify({ url, answer: textInput ? textInput.value.trim() : "" });
         const { error } = await supabase.from("submissions").upsert({
           team_id: team.id, task_id: taskId,
           type: needsText ? "photo_text" : "photo",
@@ -466,9 +578,8 @@ function drawPlayerTasks(team, submissions) {
 
     if (textInput) {
       textInput.onblur = async () => {
-        // update text answer alone, keeping existing photo if present
         const existing = submissions[taskId];
-        if (!existing) return; // need a photo first
+        if (!existing) return;
         try {
           const parsed = JSON.parse(existing.content);
           parsed.answer = textInput.value.trim();
@@ -478,10 +589,6 @@ function drawPlayerTasks(team, submissions) {
       };
     }
   });
-
-  const disposeChat = wireChat(team.id, "player");
-  const origBack = document.getElementById("backBtn").onclick;
-  document.getElementById("backBtn").onclick = () => { disposeChat(); origBack(); };
 }
 
 // ---------- REFEREE SCREEN ----------
@@ -490,10 +597,11 @@ async function renderRefereeScreen() {
   const team = state.team;
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
 
   const submissions = await fetchSubmissions(team.id);
   drawRefereeTasks(team, submissions);
+  setupChat(team.id, "referee", `${team.emoji} ${team.name}`, team.emoji);
 }
 
 function scoreButtonsHtml(taskId, maxPoints, currentScore) {
@@ -517,7 +625,7 @@ function drawRefereeTasks(team, submissions) {
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between">
       <div>
         <div class="text-xs uppercase tracking-wide text-gray-400 font-bold">Scor echipă</div>
-        <div class="text-2xl font-bold text-[#009639]">${totalScore} <span class="text-sm text-gray-400 font-normal">/ ${TOTAL_MAX}</span></div>
+        <div class="text-2xl font-bold text-[#009639]">${totalScore} pct</div>
       </div>
       <button id="viewBoardBtn" class="text-sm font-semibold text-[#7a8c00] hover:underline">🏆 Vezi clasamentul</button>
     </div>`;
@@ -570,9 +678,9 @@ function drawRefereeTasks(team, submissions) {
     </div>`;
 
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
-    summary + taskCards + huntCard + chatSectionHtml();
+    summary + taskCards + huntCard;
 
-  document.getElementById("backBtn").onclick = () => { cleanupRealtime(); state.team = null; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
 
   document.querySelectorAll("[data-score-controls]").forEach(ctrl => {
@@ -596,10 +704,6 @@ function drawRefereeTasks(team, submissions) {
     approveBtn.onclick = () => setScore(maxPoints);
     rejectBtn.onclick = () => setScore(0);
   });
-
-  const disposeChat = wireChat(team.id, "referee");
-  const origBack = document.getElementById("backBtn").onclick;
-  document.getElementById("backBtn").onclick = () => { disposeChat(); origBack(); };
 }
 
 renderRoleSelect();
