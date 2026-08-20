@@ -221,8 +221,8 @@ function drawPanelContent() {
       threadHeaderHtml(singleCtx.counterpartEmoji, singleCtx.counterpartLabel, false) +
       `<div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-3">${messageBubblesHtml(singleMessages, "player")}</div>
        <div class="shrink-0 flex gap-2 p-3 border-t border-gray-100">
-         <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
-         <button id="chatSend" class="px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
+         <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 min-w-0 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
+         <button id="chatSend" class="shrink-0 px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
        </div>`;
     wireCloseAndSend("player", () => singleCtx.teamId);
     const box = document.getElementById("chatMessages");
@@ -271,8 +271,8 @@ function drawPanelContent() {
     threadHeaderHtml(team.emoji, team.name, true) +
     `<div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-3">${messageBubblesHtml(thread.messages, "referee")}</div>
      <div class="shrink-0 flex gap-2 p-3 border-t border-gray-100">
-       <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
-       <button id="chatSend" class="px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
+       <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 min-w-0 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
+       <button id="chatSend" class="shrink-0 px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
      </div>`;
   document.getElementById("chatBackBtn").onclick = () => { activeThreadTeamId = null; drawPanelContent(); };
   wireCloseAndSend("referee", () => activeThreadTeamId);
