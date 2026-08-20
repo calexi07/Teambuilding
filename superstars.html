@@ -6,6 +6,7 @@
 <title>Super Stars Night — Jurizare</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg-0:#0f0a24;
@@ -282,37 +283,52 @@ function juryForRound(round){ return JURY.filter(j => (round===1 ? j.r1 : j.r2))
 function criterionLabel(j, round){ return round===1 ? j.r1 : j.r2; }
 function maxForRound(round){ return juryForRound(round).length * 10; }
 
-/* ============== STORAGE HELPERS ============== */
+/* ============== SUPABASE ============== */
+const SUPABASE_URL = 'https://oyagueepbzwwheuulenk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95YWd1ZWVwYnp3d2hldXVsZW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxOTI2NDcsImV4cCI6MjEwMjc2ODY0N30._yajYcPIbR7hOPXZfK5OoaCVhUyrBmKF8Yawn5HdI_s';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============== STORAGE HELPERS (Supabase) ============== */
 async function getState(){
   try{
-    const r = await window.storage.get('control-state', true);
-    return r ? JSON.parse(r.value) : {teamIndex:0, round:1};
+    const {data, error} = await sb.from('superstars_control').select('team_index, round').eq('id','singleton').maybeSingle();
+    if(error || !data) return {teamIndex:0, round:1};
+    return {teamIndex:data.team_index, round:data.round};
   }catch(e){ return {teamIndex:0, round:1}; }
 }
 async function setState(state){
-  try{ await window.storage.set('control-state', JSON.stringify(state), true); }catch(e){}
+  try{
+    await sb.from('superstars_control')
+      .update({team_index:state.teamIndex, round:state.round, updated_at:new Date().toISOString()})
+      .eq('id','singleton');
+  }catch(e){}
 }
 async function getScores(){
   try{
-    const r = await window.storage.get('all-scores', true);
-    return r ? JSON.parse(r.value) : {};
+    const {data, error} = await sb.from('superstars_scores').select('round, team_index, jury_id, score');
+    if(error || !data) return {};
+    const map = {};
+    data.forEach(r => { map[`${r.round}-${r.team_index}-${r.jury_id}`] = r.score; });
+    return map;
   }catch(e){ return {}; }
 }
 async function setScoreValue(round, teamIndex, juryId, value){
-  const scores = await getScores();
-  scores[`${round}-${teamIndex}-${juryId}`] = value;
-  try{ await window.storage.set('all-scores', JSON.stringify(scores), true); }catch(e){}
-  return scores;
+  try{
+    await sb.from('superstars_scores').upsert({
+      round, team_index:teamIndex, jury_id:juryId, score:value, updated_at:new Date().toISOString()
+    }, {onConflict:'round,team_index,jury_id'});
+  }catch(e){}
+  return getScores();
 }
 async function resetTeamRound(round, teamIndex){
-  const scores = await getScores();
-  JURY.forEach(j => delete scores[`${round}-${teamIndex}-${j.id}`]);
-  try{ await window.storage.set('all-scores', JSON.stringify(scores), true); }catch(e){}
+  try{
+    await sb.from('superstars_scores').delete().eq('round', round).eq('team_index', teamIndex);
+  }catch(e){}
 }
 async function resetEverything(){
   try{
-    await window.storage.set('all-scores', JSON.stringify({}), true);
-    await window.storage.set('control-state', JSON.stringify({teamIndex:0, round:1}), true);
+    await sb.from('superstars_scores').delete().gte('round', 0);
+    await sb.from('superstars_control').update({team_index:0, round:1, updated_at:new Date().toISOString()}).eq('id','singleton');
   }catch(e){}
 }
 
