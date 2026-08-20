@@ -399,7 +399,7 @@ let activityOpen = false;
 let activityUnread = 0;
 let activityRealtimeChannel = null;
 let activityPollId = null;
-let lastActivitySeen = {}; // submission id -> updated_at seen, to detect real changes on poll
+let activityKnown = {}; // submission id -> { content, updated_at } — full cache so poll can detect changes on its own
 const recentSelfUpdates = new Set(); // "teamId:taskId" keys the referee just scored, to suppress self-notifications
 
 function markSelfUpdate(teamId, taskId) {
@@ -509,11 +509,32 @@ function pushActivity(row) {
   if (activityOpen) drawActivityList();
 }
 
+// Central place that decides "is this row worth notifying about right now?" —
+// used by both the realtime handlers AND the poll fallback, so notifications
+// work reliably even if Realtime isn't wired up correctly.
+function evaluateSubmissionForActivity(row, { isBrandNew }) {
+  const cached = activityKnown[row.id];
+  activityKnown[row.id] = { content: row.content, updated_at: row.updated_at };
+
+  if (isBrandNew || !cached) {
+    // a genuinely new submission from a team
+    pushActivity(row);
+    return;
+  }
+  if (cached.updated_at === row.updated_at) return; // nothing actually changed
+  if (cached.content === row.content) return; // only score/approved/bonuses changed — not activity-worthy
+
+  const selfKey = `${row.team_id}:${row.task_id}`;
+  if (recentSelfUpdates.has(selfKey)) return; // this referee just scored it — don't self-notify
+
+  pushActivity(row);
+}
+
 async function setupRefereeActivity() {
   teardownActivity();
-  const { data } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(20);
-  (data || []).slice().reverse().forEach(row => {
-    lastActivitySeen[row.id] = row.updated_at;
+  const { data } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(30);
+  (data || []).forEach(row => { activityKnown[row.id] = { content: row.content, updated_at: row.updated_at }; });
+  (data || []).slice(0, 10).reverse().forEach(row => {
     const team = TEAMS.find(t => t.id === row.team_id);
     if (!team) return;
     const info = getTaskInfo(row.task_id);
@@ -525,30 +546,19 @@ async function setupRefereeActivity() {
   activityRealtimeChannel = supabase
     .channel("referee-activity")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "submissions" }, (payload) => {
-      lastActivitySeen[payload.new.id] = payload.new.updated_at;
-      pushActivity(payload.new);
+      evaluateSubmissionForActivity(payload.new, { isBrandNew: !(payload.new.id in activityKnown) });
     })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "submissions" }, (payload) => {
-      lastActivitySeen[payload.new.id] = payload.new.updated_at;
-      const selfKey = `${payload.new.team_id}:${payload.new.task_id}`;
-      if (recentSelfUpdates.has(selfKey)) return; // this referee just scored/bonus'd it — not a new team submission
-      // only notify when the actual content changed (new/replaced photo or text) — not when a referee only scored it
-      if (payload.old && payload.old.content !== payload.new.content) {
-        pushActivity(payload.new);
-      }
+      evaluateSubmissionForActivity(payload.new, { isBrandNew: false });
     })
     .subscribe();
 
+  // Poll fallback — fully self-sufficient, doesn't rely on Realtime having fired first.
   activityPollId = setInterval(async () => {
-    const { data: fresh } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(20);
+    const { data: fresh } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(30);
     (fresh || []).forEach(row => {
-      if (lastActivitySeen[row.id] !== row.updated_at) {
-        const wasSeen = row.id in lastActivitySeen;
-        lastActivitySeen[row.id] = row.updated_at;
-        const selfKey = `${row.team_id}:${row.task_id}`;
-        if (recentSelfUpdates.has(selfKey)) return;
-        if (wasSeen) pushActivity(row); // skip the very first sighting (already covered by initial load)
-      }
+      const isBrandNew = !(row.id in activityKnown);
+      evaluateSubmissionForActivity(row, { isBrandNew });
     });
   }, 5000);
 }
@@ -559,7 +569,7 @@ function teardownActivity() {
   activityItems = [];
   activityUnread = 0;
   activityOpen = false;
-  lastActivitySeen = {};
+  activityKnown = {};
   activityRoot.innerHTML = "";
 }
 
@@ -607,16 +617,32 @@ function wireLightboxImages() {
 }
 
 // ---------- HELPERS ----------
-function headerHtml(title, subtitle, showBack) {
+function headerHtml(title, subtitle, showBack, showLogoff) {
   return `
     <div class="relative overflow-hidden rounded-2xl mb-6" style="background: linear-gradient(135deg, #0b1f3a 0%, #123a2b 100%);">
       <div class="absolute inset-0" style="background: radial-gradient(circle at 20% 20%, rgba(0,150,57,0.35), transparent 45%), radial-gradient(circle at 80% 30%, rgba(184,212,50,0.3), transparent 40%);"></div>
       <div class="relative px-6 py-8 text-center">
         ${showBack ? `<button id="backBtn" class="absolute left-4 top-4 text-white/70 hover:text-white text-sm">&larr; Înapoi</button>` : ""}
+        ${showLogoff ? `<button id="logoffBtn" class="absolute right-4 top-4 text-white/70 hover:text-white text-sm flex items-center gap-1">🚪 Logoff</button>` : ""}
         <h1 class="font-display text-3xl font-bold text-white tracking-wide">${title}</h1>
         ${subtitle ? `<p class="text-[#b8d432] font-semibold mt-2">${subtitle}</p>` : ""}
       </div>
     </div>`;
+}
+
+function doLogoff() {
+  teardownChat();
+  teardownActivity();
+  teardownScoreWatcher();
+  cleanupRealtime();
+  state = { role: null, team: null, authed: false };
+  renderRoleSelect();
+}
+
+function goToMySpace() {
+  if (state.authed && state.team && state.role === "player") { renderPlayerScreen(); return; }
+  if (state.authed && state.team && state.role === "referee") { renderRefereeScreen(); return; }
+  renderRoleSelect();
 }
 
 function statusPillHtml(score, maxPoints, hasSubmission, approved) {
@@ -787,7 +813,7 @@ async function renderLeaderboard() {
   teardownScoreWatcher();
   app.innerHTML = headerHtml("🏆 Clasament live", "Se actualizează automat", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { renderRoleSelect(); };
+  document.getElementById("backBtn").onclick = () => { goToMySpace(); };
 
   const draw = async () => {
     const ranking = await computeLeaderboard();
@@ -802,7 +828,7 @@ async function renderLeaderboard() {
         </div>`;
     }).join("");
     app.innerHTML = headerHtml("🏆 Clasament live", "Se actualizează automat", true) + `<div>${rows}</div>`;
-    document.getElementById("backBtn").onclick = () => { renderRoleSelect(); };
+    document.getElementById("backBtn").onclick = () => { goToMySpace(); };
   };
 
   await draw();
@@ -821,9 +847,9 @@ async function renderLeaderboard() {
 async function renderPlayerScreen() {
   cleanupRealtime();
   const team = state.team;
-  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", false, true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownScoreWatcher(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("logoffBtn").onclick = doLogoff;
 
   const submissions = await fetchSubmissions(team.id);
   drawPlayerTasks(team, submissions);
@@ -989,10 +1015,10 @@ function drawPlayerTasks(team, submissions) {
       </div>
     </div>`;
 
-  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", false, true) +
     summary + taskCards + huntCard;
 
-  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownScoreWatcher(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("logoffBtn").onclick = doLogoff;
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
 
   document.querySelectorAll("[data-task]").forEach(card => {
@@ -1047,9 +1073,9 @@ function drawPlayerTasks(team, submissions) {
 async function renderRefereeScreen() {
   cleanupRealtime();
   const team = state.team;
-  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", false, true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownActivity(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("logoffBtn").onclick = doLogoff;
 
   const submissions = await fetchSubmissions(team.id);
   drawRefereeTasks(team, submissions);
@@ -1140,10 +1166,10 @@ function drawRefereeTasks(team, submissions) {
       </div>
     </div>`;
 
-  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
+  app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", false, true) +
     summary + taskCards + huntCard;
 
-  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownActivity(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("logoffBtn").onclick = doLogoff;
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
   wireLightboxImages();
 
