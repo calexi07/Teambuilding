@@ -641,6 +641,7 @@ function renderRoleSelect() {
   cleanupRealtime();
   teardownChat();
   teardownActivity();
+  teardownScoreWatcher();
   app.innerHTML = `
     ${headerHtml("Let's Go Team", "Sibiu 2026 · Treasure Hunt", false)}
     <p class="text-center text-gray-500 mb-6">Alege spațiul tău</p>
@@ -783,6 +784,7 @@ async function renderLeaderboard() {
   cleanupRealtime();
   teardownChat();
   teardownActivity();
+  teardownScoreWatcher();
   app.innerHTML = headerHtml("🏆 Clasament live", "Se actualizează automat", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
   document.getElementById("backBtn").onclick = () => { renderRoleSelect(); };
@@ -821,11 +823,90 @@ async function renderPlayerScreen() {
   const team = state.team;
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownScoreWatcher(); state.team = null; state.authed = false; renderTeamPicker(); };
 
   const submissions = await fetchSubmissions(team.id);
   drawPlayerTasks(team, submissions);
   setupChat(team.id, "Arbitru", "🛡️");
+  setupScoreWatcher(team, submissions);
+}
+
+// ---------- Score pop-up notification ----------
+function showScorePopup(taskTitle, approved, points, onContinue) {
+  const overlay = document.createElement("div");
+  overlay.className = "fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4";
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+      <div class="text-5xl mb-3">${approved ? "🎉" : "😕"}</div>
+      <div class="text-xs uppercase tracking-wide text-gray-400 font-bold mb-1">Rezultat evaluare</div>
+      <div class="font-bold text-gray-800 text-lg mb-2">${escapeHtml(taskTitle)}</div>
+      <div class="text-3xl font-bold mb-4 ${approved ? "text-[#009639]" : "text-red-500"}">${points > 0 ? "+" : ""}${points} puncte</div>
+      <p class="text-sm text-gray-500 mb-5">${approved ? "Bravo, echipă!" : "Nu de data asta — mergeți mai departe cu celelalte obiective!"}</p>
+      <button id="popupContinueBtn" class="w-full px-4 py-3 rounded-lg bg-[#009639] text-white font-semibold hover:bg-[#007a2e] transition-colors">Continuă &rarr;</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById("popupContinueBtn").onclick = () => { overlay.remove(); onContinue(); };
+}
+
+let scoreWatcherChannel = null;
+let scoreWatcherPollId = null;
+let lastKnownApproved = {};
+let popupQueue = [];
+let popupShowing = false;
+
+function processPopupQueue(team) {
+  if (popupShowing || popupQueue.length === 0) return;
+  popupShowing = true;
+  const item = popupQueue.shift();
+  showScorePopup(item.title, item.approved, item.points, async () => {
+    popupShowing = false;
+    const fresh = await fetchSubmissions(team.id);
+    drawPlayerTasks(team, fresh);
+    processPopupQueue(team);
+  });
+}
+
+function checkForNewlyScored(team, submissions) {
+  TASKS.forEach(task => {
+    const sub = submissions[task.id];
+    const wasApproved = lastKnownApproved[task.id];
+    const nowApproved = sub ? sub.approved : undefined;
+    const known = task.id in lastKnownApproved;
+    lastKnownApproved[task.id] = nowApproved;
+    if (known && (wasApproved === null || wasApproved === undefined) && (nowApproved !== null && nowApproved !== undefined)) {
+      popupQueue.push({ title: task.title, approved: nowApproved, points: sub.score || 0 });
+    }
+  });
+  processPopupQueue(team);
+}
+
+function setupScoreWatcher(team, initialSubmissions) {
+  teardownScoreWatcher();
+  TASKS.forEach(task => {
+    const sub = initialSubmissions[task.id];
+    lastKnownApproved[task.id] = sub ? sub.approved : undefined;
+  });
+
+  scoreWatcherChannel = supabase
+    .channel(`score-watch-${team.id}`)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "submissions", filter: `team_id=eq.${team.id}` }, async () => {
+      const fresh = await fetchSubmissions(team.id);
+      checkForNewlyScored(team, fresh);
+    })
+    .subscribe();
+
+  scoreWatcherPollId = setInterval(async () => {
+    const fresh = await fetchSubmissions(team.id);
+    checkForNewlyScored(team, fresh);
+  }, 4000);
+}
+
+function teardownScoreWatcher() {
+  if (scoreWatcherChannel) { supabase.removeChannel(scoreWatcherChannel); scoreWatcherChannel = null; }
+  if (scoreWatcherPollId) { clearInterval(scoreWatcherPollId); scoreWatcherPollId = null; }
+  lastKnownApproved = {};
+  popupQueue = [];
+  popupShowing = false;
 }
 
 function drawPlayerTasks(team, submissions) {
@@ -911,7 +992,7 @@ function drawPlayerTasks(team, submissions) {
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Spațiul echipei tale", true) +
     summary + taskCards + huntCard;
 
-  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownScoreWatcher(); state.team = null; state.authed = false; renderTeamPicker(); };
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
 
   document.querySelectorAll("[data-task]").forEach(card => {
