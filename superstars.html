@@ -206,8 +206,12 @@
   .save-btn{background:rgba(255,215,106,0.15); border:1px solid var(--card-border-lit); color:var(--gold); padding:10px 18px; border-radius:10px; font-weight:700; font-size:13px;}
   .hint{font-size:12px; color:var(--lavender-dim); margin-top:8px;}
   .current-song{font-size:13px; color:var(--lavender); margin-top:6px;}
-  .order-row{display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;}
+  .order-row{display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px; border-radius:10px; transition:background .15s ease, border-color .15s ease; touch-action:none; user-select:none;}
   .order-row:last-child{border-bottom:none;}
+  .order-row.dragging{background:rgba(255,215,106,0.09); border:1px solid var(--card-border-lit); box-shadow:0 10px 26px rgba(0,0,0,0.35); position:relative; z-index:50;}
+  .order-row.drop-target{border-top:2px solid var(--gold);}
+  .drag-handle{cursor:grab; color:var(--lavender-dim); font-size:18px; padding:4px 6px; touch-action:none; flex-shrink:0;}
+  .drag-handle:active{cursor:grabbing;}
   .order-pos{width:26px; height:26px; border-radius:50%; background:rgba(255,215,106,0.15); color:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0;}
   .order-team{flex:1; font-weight:600;}
   .order-actions{display:flex; gap:6px;}
@@ -596,16 +600,19 @@ async function renderControl(){
 
       <div class="panel">
         <h3><span>🎲 Ordinea de intrare</span><button class="mini-btn" id="shuffleBtn">Amestecă aleator</button></h3>
-        ${order.map((ti, idx)=>`
-          <div class="order-row">
-            <div class="order-pos">${idx+1}</div>
-            <div class="order-team">${TEAM_ICONS[ti]} ${TEAMS[ti]}</div>
-            <div class="order-actions">
-              <button class="order-btn" data-move="up" data-idx="${idx}" ${idx===0?'disabled':''}>▲</button>
-              <button class="order-btn" data-move="down" data-idx="${idx}" ${idx===order.length-1?'disabled':''}>▼</button>
-            </div>
-          </div>`).join('')}
-        <div class="hint">Setează ordinea după tragerea la sorți, înainte de a începe spectacolul.</div>
+        <div id="orderList">
+          ${order.map((ti, idx)=>`
+            <div class="order-row" data-idx="${idx}">
+              <div class="drag-handle">⠿</div>
+              <div class="order-pos">${idx+1}</div>
+              <div class="order-team">${TEAM_ICONS[ti]} ${TEAMS[ti]}</div>
+              <div class="order-actions">
+                <button class="order-btn" data-move="up" data-idx="${idx}" ${idx===0?'disabled':''}>▲</button>
+                <button class="order-btn" data-move="down" data-idx="${idx}" ${idx===order.length-1?'disabled':''}>▼</button>
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="hint">Trage echipele de mânerul ⠿ ca să le rearanjezi, sau folosește săgețile — după tragerea la sorți, înainte de a începe spectacolul.</div>
       </div>
 
       <div class="stepper">
@@ -750,6 +757,58 @@ async function renderControl(){
       await resetEverything(); renderControl();
     }
   };
+
+  setupDragReorder(order);
+}
+
+function setupDragReorder(order){
+  const container = document.getElementById('orderList');
+  if(!container) return;
+  const rowEls = Array.from(container.querySelectorAll('.order-row'));
+
+  rowEls.forEach((rowEl)=>{
+    const handle = rowEl.querySelector('.drag-handle');
+    if(!handle) return;
+
+    handle.onpointerdown = (e)=>{
+      e.preventDefault();
+      const startIdx = parseInt(rowEl.dataset.idx,10);
+      const rowHeight = rowEl.getBoundingClientRect().height;
+      const startClientY = e.clientY;
+      let targetIdx = startIdx;
+
+      rowEl.classList.add('dragging');
+      try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+
+      const onMove = (ev)=>{
+        const dy = ev.clientY - startClientY;
+        rowEl.style.transform = `translateY(${dy}px)`;
+        let t = startIdx + Math.round(dy / rowHeight);
+        t = Math.max(0, Math.min(rowEls.length - 1, t));
+        rowEls.forEach(r => r.classList.remove('drop-target'));
+        if(t !== startIdx && rowEls[t]) rowEls[t].classList.add('drop-target');
+        targetIdx = t;
+      };
+
+      const onUp = async (ev)=>{
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        rowEl.classList.remove('dragging');
+        rowEl.style.transform = '';
+        rowEls.forEach(r => r.classList.remove('drop-target'));
+        if(targetIdx !== startIdx){
+          const newOrder = [...order];
+          const [moved] = newOrder.splice(startIdx, 1);
+          newOrder.splice(targetIdx, 0, moved);
+          await patchState({order:newOrder});
+        }
+        renderControl();
+      };
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    };
+  });
 }
 
 /* ============== JURY SELECT ============== */
