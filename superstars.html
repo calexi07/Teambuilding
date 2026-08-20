@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Super Stars Night — Jurizare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0f0a24;
+    --bg-1:#1a1140;
+    --bg-2:#241456;
+    --violet:#8b3ffb;
+    --violet-soft:#7b2ff7;
+    --magenta:#ff4fa3;
+    --gold:#ffd76a;
+    --gold-deep:#f0b429;
+    --ink:#fbf8ff;
+    --lavender:#b9a9de;
+    --lavender-dim:#8577ab;
+    --card:rgba(255,255,255,0.055);
+    --card-border:rgba(255,255,255,0.13);
+    --card-border-lit:rgba(255,215,106,0.55);
+    --radius:20px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,79,163,0.20), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(139,63,251,0.30), transparent 50%),
+      radial-gradient(circle at 50% 90%, rgba(255,215,106,0.10), transparent 55%),
+      linear-gradient(160deg, var(--bg-0), var(--bg-1) 55%, var(--bg-2));
+    background-attachment:fixed;
+    color:var(--ink);
+    font-family:'Manrope', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .noise{
+    position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.5;
+    background-image:radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size:3px 3px;
+  }
+  #app{position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column;}
+  h1,h2,h3,.display{font-family:'Baloo 2', sans-serif;}
+  .num{font-family:'Space Grotesk', monospace;}
+  a{color:inherit; text-decoration:none;}
+  button{font-family:inherit; cursor:pointer;}
+  ::selection{background:var(--gold); color:#221238;}
+
+  /* ---------- top corner nav ---------- */
+  .corner-nav{
+    position:fixed; top:16px; left:16px; z-index:20;
+    display:flex; gap:8px; align-items:center;
+  }
+  .corner-btn{
+    background:rgba(20,12,45,0.6); border:1px solid var(--card-border);
+    color:var(--lavender); padding:8px 14px; border-radius:999px;
+    font-size:13px; font-weight:600; backdrop-filter:blur(6px);
+    transition:all .15s ease;
+  }
+  .corner-btn:hover{border-color:var(--card-border-lit); color:var(--gold);}
+
+  /* ---------- HOME ---------- */
+  .home{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:60px 24px;
+  }
+  .home .eyebrow{
+    letter-spacing:.3em; text-transform:uppercase; font-size:12px; color:var(--lavender);
+    font-weight:700; margin-bottom:18px;
+  }
+  .home h1{
+    font-size:clamp(38px, 7vw, 76px); margin:0; line-height:1;
+    background:linear-gradient(100deg, var(--gold) 10%, #fff 35%, var(--magenta) 60%, var(--violet-soft) 90%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 60px rgba(255,215,106,0.25);
+  }
+  .home .sub{color:var(--lavender); margin-top:14px; font-size:16px;}
+  .home .cards{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:18px; margin-top:52px; max-width:820px; width:100%;
+  }
+  .nav-card{
+    background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
+    padding:28px 20px; transition:all .18s ease; display:flex; flex-direction:column; gap:10px;
+    align-items:center; text-align:center;
+  }
+  .nav-card:hover{transform:translateY(-4px); border-color:var(--card-border-lit); box-shadow:0 12px 30px rgba(139,63,251,0.25);}
+  .nav-card .ic{font-size:34px;}
+  .nav-card .t{font-family:'Baloo 2'; font-size:19px; font-weight:700;}
+  .nav-card .d{font-size:13px; color:var(--lavender-dim);}
+
+  /* ---------- shared page shell ---------- */
+  .page{flex:1; padding:80px 20px 40px; max-width:1180px; margin:0 auto; width:100%;}
+  .page-header{text-align:center; margin-bottom:28px;}
+  .page-header .eyebrow{letter-spacing:.25em; text-transform:uppercase; font-size:11px; color:var(--lavender-dim); font-weight:700;}
+  .page-header h2{font-size:clamp(24px,4vw,38px); margin:6px 0 0;}
+
+  /* ---------- SCREEN VIEW ---------- */
+  .screen-wrap{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;}
+  .screen-eyebrow{
+    display:flex; align-items:center; gap:10px; letter-spacing:.35em; text-transform:uppercase;
+    font-size:13px; color:var(--gold); font-weight:700; margin-bottom:14px;
+  }
+  .round-badge{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 20px; border-radius:999px;
+    background:rgba(255,79,163,0.14); border:1px solid rgba(255,79,163,0.4); color:#ffb6dc;
+    font-weight:700; font-size:14px; margin-bottom:22px;
+  }
+  .team-display{display:flex; align-items:center; gap:22px; margin-bottom:8px;}
+  .team-display .ic{font-size:clamp(40px,6vw,70px); filter:drop-shadow(0 0 16px rgba(255,215,106,0.4));}
+  .team-display h1{
+    font-size:clamp(40px, 8vw, 92px); margin:0; line-height:1;
+    background:linear-gradient(100deg, #fff 10%, var(--gold) 55%, var(--magenta) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .ring-zone{position:relative; width:min(70vw,380px); aspect-ratio:1; margin:34px auto 10px;}
+  .ring-svg{position:absolute; inset:0; width:100%; height:100%;}
+  .ring-line{stroke:rgba(255,255,255,0.14); stroke-width:2; transition:stroke .4s ease, filter .4s ease;}
+  .ring-line.filled{stroke:var(--gold); filter:drop-shadow(0 0 5px rgba(255,215,106,0.8));}
+  .ring-dot{fill:rgba(255,255,255,0.28); transition:all .4s ease;}
+  .ring-dot.filled{fill:var(--gold); filter:drop-shadow(0 0 8px rgba(255,215,106,0.9));}
+  .ring-core{fill:rgba(255,255,255,0.045); stroke:var(--violet); stroke-width:1.5;}
+  .ring-total{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .ring-total .n{font-size:clamp(38px,7vw,64px); font-weight:700; line-height:1;}
+  .ring-total .lbl{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--lavender); margin-top:6px;}
+  .crit-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:12px;
+    max-width:920px; width:100%; margin-top:20px;
+  }
+  .crit-card{
+    background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:16px;
+    transition:all .3s ease;
+  }
+  .crit-card.filled{border-color:var(--card-border-lit); background:rgba(255,215,106,0.07); box-shadow:0 0 24px rgba(255,215,106,0.12);}
+  .crit-card .jn{font-size:12px; color:var(--lavender-dim); font-weight:600;}
+  .crit-card .cn{font-size:13px; color:var(--lavender); margin-top:2px; min-height:16px;}
+  .crit-card .sc{font-family:'Space Grotesk'; font-size:26px; font-weight:700; margin-top:6px; color:var(--gold);}
+  .crit-card .sc.pending{color:var(--lavender-dim); font-size:18px;}
+  .sparkle{position:fixed; pointer-events:none; font-size:20px; animation:sparkleUp 1.6s ease-out forwards; z-index:5;}
+  @keyframes sparkleUp{
+    0%{opacity:0; transform:translateY(0) scale(.4) rotate(0deg);}
+    15%{opacity:1;}
+    100%{opacity:0; transform:translateY(-140px) scale(1.1) rotate(180deg);}
+  }
+
+  /* ---------- CONTROL ---------- */
+  .tabs{display:flex; gap:10px; justify-content:center; margin-bottom:22px;}
+  .tab{
+    padding:10px 22px; border-radius:999px; border:1px solid var(--card-border); background:var(--card);
+    font-weight:700; font-size:14px; color:var(--lavender);
+  }
+  .tab.active{background:linear-gradient(100deg, var(--violet-soft), var(--magenta)); color:#fff; border-color:transparent;}
+  .team-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px; margin-bottom:26px;
+  }
+  .team-pick{
+    background:var(--card); border:1px solid var(--card-border); border-radius:14px; padding:14px 10px;
+    text-align:center; font-weight:700; font-size:13px; color:var(--lavender);
+  }
+  .team-pick .ic{display:block; font-size:22px; margin-bottom:6px;}
+  .team-pick.active{border-color:var(--gold); background:rgba(255,215,106,0.1); color:var(--gold); box-shadow:0 0 20px rgba(255,215,106,0.15);}
+  .team-pick .status{display:block; font-size:10px; margin-top:4px; color:var(--lavender-dim); font-weight:600;}
+  .team-pick.done .status{color:#7ee787;}
+  .stepper{display:flex; justify-content:center; gap:10px; margin-bottom:8px;}
+  .step-btn{
+    background:var(--card); border:1px solid var(--card-border); border-radius:999px; padding:10px 20px;
+    color:var(--ink); font-weight:700; font-size:14px;
+  }
+  .panel{
+    background:var(--card); border:1px solid var(--card-border); border-radius:var(--radius);
+    padding:22px; margin-bottom:22px;
+  }
+  .panel h3{margin:0 0 14px; font-size:16px; display:flex; align-items:center; justify-content:space-between;}
+  .crit-row{
+    display:flex; align-items:center; justify-content:space-between; padding:10px 0;
+    border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px;
+  }
+  .crit-row:last-child{border-bottom:none;}
+  .crit-row .who{font-weight:700;}
+  .crit-row .what{color:var(--lavender-dim); font-size:12px;}
+  .crit-row .val{font-family:'Space Grotesk'; font-weight:700; color:var(--gold); font-size:18px; min-width:34px; text-align:right;}
+  .crit-row .val.pending{color:var(--lavender-dim); font-size:13px;}
+  .mini-btn{
+    background:rgba(255,79,163,0.12); border:1px solid rgba(255,79,163,0.4); color:#ffb6dc;
+    padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700;
+  }
+  table.board{width:100%; border-collapse:collapse; font-size:14px;}
+  table.board th{text-align:left; color:var(--lavender-dim); font-size:11px; text-transform:uppercase; letter-spacing:.1em; padding:6px 8px;}
+  table.board td{padding:10px 8px; border-top:1px solid rgba(255,255,255,0.06);}
+  table.board tr td:first-child{font-weight:700;}
+  .rank{display:inline-flex; width:26px;}
+  .danger-zone{text-align:center; margin-top:10px;}
+  .danger-btn{
+    background:rgba(255,60,80,0.1); border:1px solid rgba(255,60,80,0.4); color:#ff8a97;
+    padding:10px 22px; border-radius:10px; font-weight:700; font-size:13px;
+  }
+
+  /* ---------- JURY SELECT ---------- */
+  .jury-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px;}
+  .jury-card{
+    background:var(--card); border:1px solid var(--card-border); border-radius:16px; padding:20px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .jury-card:hover{border-color:var(--card-border-lit);}
+  .jury-card .nm{font-family:'Baloo 2'; font-size:18px; font-weight:700;}
+  .jury-card .cr{font-size:12px; color:var(--lavender);}
+  .jury-card .cr b{color:var(--gold-deep);}
+
+  /* ---------- JURY SCORE ---------- */
+  .jscore{flex:1; display:flex; flex-direction:column; align-items:center; padding:78px 18px 30px; text-align:center;}
+  .jname{font-size:13px; color:var(--lavender-dim); font-weight:700; text-transform:uppercase; letter-spacing:.15em;}
+  .jcrit{
+    font-family:'Baloo 2'; font-size:clamp(22px,5vw,30px); font-weight:700; margin-top:6px;
+    color:var(--gold);
+  }
+  .jteam-tag{
+    margin-top:22px; padding:14px 26px; border-radius:16px; background:var(--card); border:1px solid var(--card-border);
+  }
+  .jteam-tag .lbl{font-size:11px; color:var(--lavender-dim); text-transform:uppercase; letter-spacing:.15em;}
+  .jteam-tag .val{font-family:'Baloo 2'; font-size:26px; margin-top:4px;}
+  .pad{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:34px;
+    max-width:420px; width:100%;
+  }
+  .pad-btn{
+    aspect-ratio:1; border-radius:16px; background:var(--card); border:1px solid var(--card-border);
+    font-family:'Space Grotesk'; font-size:24px; font-weight:700; color:var(--ink);
+    transition:all .12s ease;
+  }
+  .pad-btn:active{transform:scale(.94);}
+  .pad-btn.selected{
+    background:linear-gradient(140deg, var(--gold), var(--gold-deep)); color:#241238; border-color:transparent;
+    box-shadow:0 0 26px rgba(255,215,106,0.5);
+  }
+  .save-note{margin-top:22px; font-size:13px; color:#7ee787; font-weight:700; min-height:18px;}
+  .waiting-box{
+    margin-top:40px; padding:30px; border-radius:18px; background:var(--card); border:1px dashed var(--card-border);
+    max-width:360px; color:var(--lavender);
+  }
+  .swap-link{margin-top:30px; font-size:13px; color:var(--lavender-dim); text-decoration:underline;}
+
+  @media (max-width:520px){
+    .page{padding-top:70px;}
+    .pad{grid-template-columns:repeat(5,1fr); gap:9px;}
+  }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div id="app"></div>
+
+<script>
+/* ============== DATA ============== */
+const TEAMS = [
+  "Șoimii Turnului","Ochii Sibiului","Gardienii Podului","Cavalerii Cetății",
+  "Vânătorii de Comori","Exploratorii Transilvaniei","Navigatorii Orașului",
+  "Lupii Cibinului","Legendele Brukenthal"
+];
+const TEAM_ICONS = ["🦅","👁️","🌉","🏰","🗝️","⭐","🧭","🐺","👑"];
+
+const JURY = [
+  {id:1, name:"Cristina Boeriu", r1:"Sincronizare cu originalul", r2:null},
+  {id:2, name:"Gorazd Pucelj",   r1:"Coregrafie",                 r2:"Dans"},
+  {id:3, name:"Andrei Corvin",   r1:"Costume",                    r2:null},
+  {id:4, name:"Alina Iosif",     r1:"Creativitate",                r2:null},
+  {id:5, name:"Ciprian Draghiceanu", r1:"Interpretare artistică",  r2:"Interpretare artistică (voce)"},
+  {id:6, name:"Sorin Dicu",      r1:"Umor",                       r2:null},
+];
+const ROUNDS = {
+  1:{title:"Proba 1", subtitle:"Te cunosc de undeva", icon:"🎬"},
+  2:{title:"Proba 2", subtitle:"Karaoke", icon:"🎤"},
+};
+
+function juryForRound(round){ return JURY.filter(j => (round===1 ? j.r1 : j.r2)); }
+function criterionLabel(j, round){ return round===1 ? j.r1 : j.r2; }
+function maxForRound(round){ return juryForRound(round).length * 10; }
+
+/* ============== STORAGE HELPERS ============== */
+async function getState(){
+  try{
+    const r = await window.storage.get('control-state', true);
+    return r ? JSON.parse(r.value) : {teamIndex:0, round:1};
+  }catch(e){ return {teamIndex:0, round:1}; }
+}
+async function setState(state){
+  try{ await window.storage.set('control-state', JSON.stringify(state), true); }catch(e){}
+}
+async function getScores(){
+  try{
+    const r = await window.storage.get('all-scores', true);
+    return r ? JSON.parse(r.value) : {};
+  }catch(e){ return {}; }
+}
+async function setScoreValue(round, teamIndex, juryId, value){
+  const scores = await getScores();
+  scores[`${round}-${teamIndex}-${juryId}`] = value;
+  try{ await window.storage.set('all-scores', JSON.stringify(scores), true); }catch(e){}
+  return scores;
+}
+async function resetTeamRound(round, teamIndex){
+  const scores = await getScores();
+  JURY.forEach(j => delete scores[`${round}-${teamIndex}-${j.id}`]);
+  try{ await window.storage.set('all-scores', JSON.stringify(scores), true); }catch(e){}
+}
+async function resetEverything(){
+  try{
+    await window.storage.set('all-scores', JSON.stringify({}), true);
+    await window.storage.set('control-state', JSON.stringify({teamIndex:0, round:1}), true);
+  }catch(e){}
+}
+
+/* ============== SVG STAR RING ============== */
+function ringSVG(n, filledArr, size){
+  size = size || 260;
+  const R = size*0.36, cx = size/2, cy = size/2;
+  let lines='', dots='';
+  for(let i=0;i<n;i++){
+    const angle = (-90 + i*(360/Math.max(n,1))) * Math.PI/180;
+    const x = cx + R*Math.cos(angle), y = cy + R*Math.sin(angle);
+    const f = filledArr[i];
+    lines += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="ring-line${f?' filled':''}"/>`;
+    dots  += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" class="ring-dot${f?' filled':''}"/>`;
+  }
+  return `<svg viewBox="0 0 ${size} ${size}" class="ring-svg">${lines}<circle cx="${cx}" cy="${cy}" r="${(R*0.5).toFixed(1)}" class="ring-core"/>${dots}</svg>`;
+}
+
+function spawnSparkles(container){
+  const icons = ['✨','⭐','🌟'];
+  for(let i=0;i<10;i++){
+    const s = document.createElement('div');
+    s.className='sparkle';
+    s.textContent = icons[Math.floor(Math.random()*icons.length)];
+    s.style.left = (40 + Math.random()*20) + 'vw';
+    s.style.top = (40 + Math.random()*20) + 'vh';
+    s.style.animationDelay = (Math.random()*0.5)+'s';
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(), 2200);
+  }
+}
+
+/* ============== ROUTER ============== */
+const app = document.getElementById('app');
+let pollTimer = null;
+let lastScreenComplete = false;
+
+function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+
+window.addEventListener('hashchange', render);
+window.addEventListener('DOMContentLoaded', render);
+
+function route(){
+  const h = (location.hash || '#/').replace('#','');
+  const parts = h.split('/').filter(Boolean);
+  return parts;
+}
+
+async function render(){
+  stopPoll();
+  const parts = route();
+  if(parts.length===0){ renderHome(); return; }
+  if(parts[0]==='screen'){ await renderScreen(); pollTimer = setInterval(renderScreen, 2000); return; }
+  if(parts[0]==='control'){ await renderControl(); pollTimer = setInterval(renderControl, 2500); return; }
+  if(parts[0]==='jury' && parts.length===1){ renderJurySelect(); return; }
+  if(parts[0]==='jury' && parts.length===2){
+    const jid = parseInt(parts[1],10);
+    await renderJuryScore(jid);
+    pollTimer = setInterval(()=>renderJuryScore(jid, true), 1800);
+    return;
+  }
+  renderHome();
+}
+
+/* ============== HOME ============== */
+function renderHome(){
+  app.innerHTML = `
+    <div class="home">
+      <div class="eyebrow">✨ Sibiu · August 2026</div>
+      <h1>SUPER STARS<br>NIGHT</h1>
+      <div class="sub">Aplicație de jurizare live</div>
+      <div class="cards">
+        <a class="nav-card" href="#/screen">
+          <div class="ic">📺</div>
+          <div class="t">Ecran principal</div>
+          <div class="d">Pentru televizor / ecran mare</div>
+        </a>
+        <a class="nav-card" href="#/control">
+          <div class="ic">🎛️</div>
+          <div class="t">Panou de control</div>
+          <div class="d">Alege echipa &amp; proba curentă</div>
+        </a>
+        <a class="nav-card" href="#/jury">
+          <div class="ic">🎤</div>
+          <div class="t">Juriu</div>
+          <div class="d">Tabletă individuală de notare</div>
+        </a>
+      </div>
+    </div>`;
+}
+
+/* ============== SCREEN ============== */
+async function renderScreen(){
+  const state = await getState();
+  const scores = await getScores();
+  const round = state.round, teamIndex = state.teamIndex;
+  const jList = juryForRound(round);
+  const filledArr = jList.map(j => scores[`${round}-${teamIndex}-${j.id}`] !== undefined);
+  const total = jList.reduce((s,j)=> s + (scores[`${round}-${teamIndex}-${j.id}`] || 0), 0);
+  const max = maxForRound(round);
+  const isComplete = jList.length>0 && filledArr.every(Boolean);
+
+  app.innerHTML = `
+    <a class="corner-btn" href="#/">← meniu</a>
+    <div class="screen-wrap">
+      <div class="screen-eyebrow">${ROUNDS[round].icon} ${ROUNDS[round].title}</div>
+      <div class="round-badge">${ROUNDS[round].subtitle}</div>
+      <div class="team-display">
+        <div class="ic">${TEAM_ICONS[teamIndex]}</div>
+        <h1>${TEAMS[teamIndex]}</h1>
+      </div>
+      <div class="ring-zone">
+        ${ringSVG(jList.length, filledArr)}
+        <div class="ring-total">
+          <div class="n num">${total}<span style="opacity:.5;font-size:.5em;"> / ${max}</span></div>
+          <div class="lbl">puncte</div>
+        </div>
+      </div>
+      <div class="crit-grid">
+        ${jList.map(j=>{
+          const v = scores[`${round}-${teamIndex}-${j.id}`];
+          const has = v!==undefined;
+          return `<div class="crit-card${has?' filled':''}">
+            <div class="jn">${j.name}</div>
+            <div class="cn">${criterionLabel(j,round)}</div>
+            <div class="sc${has?'':' pending'}">${has? v : '…'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  if(isComplete && !lastScreenComplete){ spawnSparkles(); }
+  lastScreenComplete = isComplete;
+}
+
+/* ============== CONTROL ============== */
+async function renderControl(){
+  const state = await getState();
+  const scores = await getScores();
+  const round = state.round, teamIndex = state.teamIndex;
+  const jList = juryForRound(round);
+
+  // leaderboard totals across both rounds
+  const totals = TEAMS.map((name, ti)=>{
+    let t=0;
+    JURY.forEach(j=>{
+      const v1 = scores[`1-${ti}-${j.id}`]; if(v1!==undefined) t+=v1;
+      const v2 = scores[`2-${ti}-${j.id}`]; if(v2!==undefined) t+=v2;
+    });
+    return {name, ti, icon:TEAM_ICONS[ti], total:t};
+  }).sort((a,b)=> b.total - a.total);
+
+  app.innerHTML = `
+    <a class="corner-btn" href="#/">← meniu</a>
+    <a class="corner-btn" href="#/screen" style="left:110px;">📺 ecran</a>
+    <div class="page">
+      <div class="page-header">
+        <div class="eyebrow">Panou de control</div>
+        <h2>Regie jurizare</h2>
+      </div>
+
+      <div class="tabs">
+        ${[1,2].map(r=>`<button class="tab${r===round?' active':''}" data-round="${r}">${ROUNDS[r].icon} ${ROUNDS[r].title} · ${ROUNDS[r].subtitle}</button>`).join('')}
+      </div>
+
+      <div class="stepper">
+        <button class="step-btn" id="prevTeam">◀ Echipa anterioară</button>
+        <button class="step-btn" id="nextTeam">Echipa următoare ▶</button>
+      </div>
+
+      <div class="team-grid">
+        ${TEAMS.map((name,ti)=>{
+          const done = jList.length>0 && jList.every(j => scores[`${round}-${ti}-${j.id}`]!==undefined);
+          return `<button class="team-pick${ti===teamIndex?' active':''}${done?' done':''}" data-team="${ti}">
+            <span class="ic">${TEAM_ICONS[ti]}</span>${name}
+            <span class="status">${done?'✓ notat':'—'}</span>
+          </button>`;
+        }).join('')}
+      </div>
+
+      <div class="panel">
+        <h3>
+          <span>${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}</span>
+          <button class="mini-btn" id="resetTeamBtn">Resetează scor</button>
+        </h3>
+        ${jList.length===0 ? `<div style="color:var(--lavender-dim);font-size:14px;">Niciun criteriu de jurizare pentru această probă.</div>` :
+          jList.map(j=>{
+            const v = scores[`${round}-${teamIndex}-${j.id}`];
+            const has = v!==undefined;
+            return `<div class="crit-row">
+              <div><div class="who">${j.name}</div><div class="what">${criterionLabel(j,round)}</div></div>
+              <div class="val${has?'':' pending'}">${has? v : 'în așteptare'}</div>
+            </div>`;
+          }).join('')
+        }
+      </div>
+
+      <div class="panel">
+        <h3><span>🏆 Clasament general</span></h3>
+        <table class="board">
+          <thead><tr><th>#</th><th>Echipă</th><th>Total</th></tr></thead>
+          <tbody>
+            ${totals.map((t,i)=>`<tr>
+              <td class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</td>
+              <td>${t.icon} ${t.name}</td>
+              <td class="num" style="color:var(--gold);font-weight:700;">${t.total}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="danger-zone">
+        <button class="danger-btn" id="resetAllBtn">Resetează tot evenimentul</button>
+      </div>
+    </div>`;
+
+  app.querySelectorAll('.tab').forEach(btn=>{
+    btn.onclick = async ()=>{ await setState({teamIndex, round:parseInt(btn.dataset.round,10)}); renderControl(); };
+  });
+  app.querySelectorAll('.team-pick').forEach(btn=>{
+    btn.onclick = async ()=>{ await setState({teamIndex:parseInt(btn.dataset.team,10), round}); renderControl(); };
+  });
+  app.querySelector('#prevTeam').onclick = async ()=>{
+    const ni = (teamIndex - 1 + TEAMS.length) % TEAMS.length;
+    await setState({teamIndex:ni, round}); renderControl();
+  };
+  app.querySelector('#nextTeam').onclick = async ()=>{
+    const ni = (teamIndex + 1) % TEAMS.length;
+    await setState({teamIndex:ni, round}); renderControl();
+  };
+  app.querySelector('#resetTeamBtn').onclick = async ()=>{
+    if(confirm(`Resetezi scorurile pentru ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}?`)){
+      await resetTeamRound(round, teamIndex); renderControl();
+    }
+  };
+  app.querySelector('#resetAllBtn').onclick = async ()=>{
+    if(confirm('Sigur resetezi TOATE scorurile și echipa curentă? Acțiunea nu poate fi anulată.')){
+      await resetEverything(); renderControl();
+    }
+  };
+}
+
+/* ============== JURY SELECT ============== */
+function renderJurySelect(){
+  app.innerHTML = `
+    <a class="corner-btn" href="#/">← meniu</a>
+    <div class="page">
+      <div class="page-header">
+        <div class="eyebrow">Juriu</div>
+        <h2>Alege-ți numele</h2>
+      </div>
+      <div class="jury-grid">
+        ${JURY.map(j=>`
+          <a class="jury-card" href="#/jury/${j.id}">
+            <div class="nm">${j.name}</div>
+            <div class="cr">Proba 1: <b>${j.r1}</b></div>
+            <div class="cr">Proba 2: ${j.r2 ? `<b>${j.r2}</b>` : 'nu notează'}</div>
+          </a>`).join('')}
+      </div>
+    </div>`;
+}
+
+/* ============== JURY SCORE ============== */
+let jurySelectedScore = null;
+let juryLastKey = null;
+
+async function renderJuryScore(jid, isPoll){
+  const j = JURY.find(x=>x.id===jid);
+  if(!j){ renderJurySelect(); return; }
+  const state = await getState();
+  const round = state.round, teamIndex = state.teamIndex;
+  const criterion = criterionLabel(j, round);
+  const key = `${round}-${teamIndex}-${j.id}`;
+
+  if(key !== juryLastKey){
+    // team/round changed: reload existing score (if any) for this exact combo
+    const scores = await getScores();
+    jurySelectedScore = scores[key] !== undefined ? scores[key] : null;
+    juryLastKey = key;
+  }
+
+  if(!criterion){
+    app.innerHTML = `
+      <a class="corner-btn" href="#/jury">← schimbă juriul</a>
+      <div class="jscore">
+        <div class="jname">${j.name}</div>
+        <div class="jcrit" style="color:var(--lavender);">Nu notezi în această probă</div>
+        <div class="jteam-tag">
+          <div class="lbl">${ROUNDS[round].icon} ${ROUNDS[round].title} — ${ROUNDS[round].subtitle}</div>
+          <div class="val">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]}</div>
+        </div>
+        <div class="waiting-box">Așteaptă următoarea probă sau următoarea echipă — ecranul se actualizează automat.</div>
+      </div>`;
+    return;
+  }
+
+  app.innerHTML = `
+    <a class="corner-btn" href="#/jury">← schimbă juriul</a>
+    <div class="jscore">
+      <div class="jname">${j.name}</div>
+      <div class="jcrit">${criterion}</div>
+      <div class="jteam-tag">
+        <div class="lbl">${ROUNDS[round].icon} ${ROUNDS[round].title} — ${ROUNDS[round].subtitle}</div>
+        <div class="val">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]}</div>
+      </div>
+      <div class="pad">
+        ${Array.from({length:10}, (_,i)=>i+1).map(n=>`
+          <button class="pad-btn${jurySelectedScore===n?' selected':''}" data-n="${n}">${n}</button>
+        `).join('')}
+      </div>
+      <div class="save-note" id="saveNote">${jurySelectedScore!==null ? 'Salvat ✓' : ''}</div>
+    </div>`;
+
+  app.querySelectorAll('.pad-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const n = parseInt(btn.dataset.n,10);
+      jurySelectedScore = n;
+      app.querySelectorAll('.pad-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const note = document.getElementById('saveNote');
+      note.textContent = 'Se salvează...';
+      await setScoreValue(round, teamIndex, j.id, n);
+      note.textContent = 'Salvat ✓';
+    };
+  });
+}
+</script>
+</body>
+</html>
