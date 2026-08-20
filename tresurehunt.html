@@ -34,22 +34,33 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-// --- Parole (aceleași pentru toate echipele momentan) ---
-const TEAM_PASSWORD = "Echipa";
-const REFEREE_PASSWORD = "Arbitru";
-const BOARD_PASSWORD = "Clasament";
+// --- Parole ---
+const TEAM_PASSWORDS = {
+  soimii: "EW8835",
+  ochii: "AC8227",
+  gardienii: "EB3825",
+  cavalerii: "KU1026",
+  vanatorii: "NL7076",
+  exploratorii: "FJ3337",
+  navigatorii: "XQ9991",
+  lupii: "WX3056",
+  legendele: "SV5335",
+};
+const REFEREE_PASSWORD = "CM1994";
+const BOARD_PASSWORD = "CM1994";
 
 const TEAMS = [
-  { id: "soimii", emoji: "🦅", name: "Șoimii Turnului" },
-  { id: "ochii", emoji: "👁️", name: "Ochii Sibiului" },
-  { id: "gardienii", emoji: "🌉", name: "Gardienii Podului" },
-  { id: "cavalerii", emoji: "🏰", name: "Cavalerii Cetății" },
-  { id: "vanatorii", emoji: "🔑", name: "Vânătorii de Comori" },
-  { id: "exploratorii", emoji: "⭐", name: "Exploratorii Transilvaniei" },
-  { id: "navigatorii", emoji: "🧭", name: "Navigatorii Orașului" },
-  { id: "lupii", emoji: "🐺", name: "Lupii Cibinului" },
-  { id: "legendele", emoji: "👑", name: "Legendele Brukenthal" },
+  { id: "soimii", emoji: "🦅", name: "Șoimii Turnului", startObjective: 1 },
+  { id: "ochii", emoji: "👁️", name: "Ochii Sibiului", startObjective: 2 },
+  { id: "gardienii", emoji: "🌉", name: "Gardienii Podului", startObjective: 3 },
+  { id: "cavalerii", emoji: "🏰", name: "Cavalerii Cetății", startObjective: 4 },
+  { id: "vanatorii", emoji: "🔑", name: "Vânătorii de Comori", startObjective: 5 },
+  { id: "exploratorii", emoji: "⭐", name: "Exploratorii Transilvaniei", startObjective: 6 },
+  { id: "navigatorii", emoji: "🧭", name: "Navigatorii Orașului", startObjective: 7 },
+  { id: "lupii", emoji: "🐺", name: "Lupii Cibinului", startObjective: 8 },
+  { id: "legendele", emoji: "👑", name: "Legendele Brukenthal", startObjective: 9 },
 ];
+
 
 const TASKS = [
   { id: "t1", title: "Obiectiv 1 - Turnul Sfatului", points: 10,
@@ -776,7 +787,7 @@ function renderPasswordGate() {
 
   const input = document.getElementById("pwInput");
   const submit = () => {
-    const expected = isPlayer ? TEAM_PASSWORD : REFEREE_PASSWORD;
+    const expected = isPlayer ? TEAM_PASSWORDS[team.id] : REFEREE_PASSWORD;
     if (input.value === expected) {
       state.authed = true;
       if (isPlayer) { renderPlayerScreen(); return; }
@@ -976,6 +987,9 @@ function drawPlayerTasks(team, submissions) {
   const totalScore = Object.values(submissions).reduce((s, sub) => s + (sub.score || 0), 0);
 
   const mapImage = `
+    <div class="text-center mb-3">
+      <span class="inline-block text-sm font-bold px-4 py-2 rounded-full bg-[#009639] text-white shadow-sm">🚩 Start de la Obiectiv ${team.startObjective}</span>
+    </div>
     <img src="data:image/jpeg;base64,${MAP_START_B64}" alt="Let's Go Team - Sibiu 2026 Treasure Hunt" class="w-full rounded-2xl shadow-sm border border-gray-100 mb-6">`;
 
   const summary = `
