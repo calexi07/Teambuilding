@@ -400,6 +400,13 @@ let activityUnread = 0;
 let activityRealtimeChannel = null;
 let activityPollId = null;
 let lastActivitySeen = {}; // submission id -> updated_at seen, to detect real changes on poll
+const recentSelfUpdates = new Set(); // "teamId:taskId" keys the referee just scored, to suppress self-notifications
+
+function markSelfUpdate(teamId, taskId) {
+  const key = `${teamId}:${taskId}`;
+  recentSelfUpdates.add(key);
+  setTimeout(() => recentSelfUpdates.delete(key), 5000);
+}
 
 function getTaskInfo(taskId) {
   if (taskId.startsWith("hunt-")) {
@@ -522,9 +529,11 @@ async function setupRefereeActivity() {
       pushActivity(payload.new);
     })
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "submissions" }, (payload) => {
+      lastActivitySeen[payload.new.id] = payload.new.updated_at;
+      const selfKey = `${payload.new.team_id}:${payload.new.task_id}`;
+      if (recentSelfUpdates.has(selfKey)) return; // this referee just scored/bonus'd it — not a new team submission
       // only notify when the actual content changed (new/replaced photo or text) — not when a referee only scored it
       if (payload.old && payload.old.content !== payload.new.content) {
-        lastActivitySeen[payload.new.id] = payload.new.updated_at;
         pushActivity(payload.new);
       }
     })
@@ -534,8 +543,11 @@ async function setupRefereeActivity() {
     const { data: fresh } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(20);
     (fresh || []).forEach(row => {
       if (lastActivitySeen[row.id] !== row.updated_at) {
+        const wasSeen = row.id in lastActivitySeen;
         lastActivitySeen[row.id] = row.updated_at;
-        pushActivity(row);
+        const selfKey = `${row.team_id}:${row.task_id}`;
+        if (recentSelfUpdates.has(selfKey)) return;
+        if (wasSeen) pushActivity(row); // skip the very first sighting (already covered by initial load)
       }
     });
   }, 5000);
@@ -1063,6 +1075,7 @@ function drawRefereeTasks(team, submissions) {
 
     const persist = async (approved, bonuses) => {
       approveBtn.disabled = true; rejectBtn.disabled = true;
+      markSelfUpdate(team.id, taskId);
       try {
         const score = computeTotal(approved, maxPoints, bonuses);
         const { error } = await supabase.from("submissions").update({ approved, bonuses, score }).eq("team_id", team.id).eq("task_id", taskId);
@@ -1088,6 +1101,7 @@ function drawRefereeTasks(team, submissions) {
         const bonuses = { ...(sub.bonuses || {}) };
         bonuses[key] = !bonuses[key];
         btn.disabled = true;
+        markSelfUpdate(team.id, taskId);
         try {
           const score = computeTotal(sub.approved === true, task.points, bonuses);
           const { error } = await supabase.from("submissions").update({ bonuses, score }).eq("team_id", team.id).eq("task_id", taskId);
