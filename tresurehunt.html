@@ -695,7 +695,7 @@ function renderRoleSelect() {
       </button>
     </div>`;
   document.getElementById("rolePlayer").onclick = () => { state = { role: "player", team: null, authed: false }; renderTeamPicker(); };
-  document.getElementById("roleReferee").onclick = () => { state = { role: "referee", team: null, authed: false }; renderTeamPicker(); };
+  document.getElementById("roleReferee").onclick = () => { state = { role: "referee", team: null, authed: false }; renderPasswordGate(); };
   document.getElementById("roleBoard").onclick = () => { renderLeaderboard(); };
 }
 
@@ -704,7 +704,7 @@ function renderTeamPicker() {
   app.innerHTML = `
     ${headerHtml(
       isPlayer ? "Alege echipa ta" : "Ce echipă arbitrezi?",
-      isPlayer ? "Fiecare echipă vede doar propriile probe" : "Vei vedea doar probele acestei echipe",
+      isPlayer ? "Fiecare echipă vede doar propriile probe" : "Alege orice echipă — poți trece liber de la una la alta",
       true
     )}
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -714,10 +714,14 @@ function renderTeamPicker() {
           <span class="text-sm font-semibold text-gray-700 text-center leading-tight">${t.name}</span>
         </button>`).join("")}
     </div>`;
-  document.getElementById("backBtn").onclick = () => { state.role = null; renderRoleSelect(); };
+  document.getElementById("backBtn").onclick = () => {
+    if (!isPlayer && state.authed) { goToMySpace(); return; }
+    state.role = null; renderRoleSelect();
+  };
   document.querySelectorAll(".teamBtn").forEach(btn => {
     btn.onclick = () => {
       state.team = TEAMS.find(t => t.id === btn.dataset.team);
+      if (!isPlayer && state.authed) { renderRefereeScreen(); return; } // already authenticated as referee — jump straight in
       renderPasswordGate();
     };
   });
@@ -726,9 +730,9 @@ function renderTeamPicker() {
 // ---------- PASSWORD GATE ----------
 function renderPasswordGate() {
   const isPlayer = state.role === "player";
-  const team = state.team;
+  const team = state.team; // null for referee — password is checked once, before picking a team
   app.innerHTML = `
-    ${headerHtml(`${team.emoji} ${team.name}`, isPlayer ? "Parola echipei" : "Parola arbitrilor", true)}
+    ${headerHtml(team ? `${team.emoji} ${team.name}` : "Autentificare arbitru", isPlayer ? "Parola echipei" : "Parola arbitrilor", true)}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
       <div class="text-4xl mb-3">🔒</div>
       <p class="text-gray-600 mb-4 text-sm">Introduceți parola pentru a continua.</p>
@@ -736,14 +740,17 @@ function renderPasswordGate() {
       <div id="pwError" class="text-red-500 text-sm mb-3 hidden">Parolă greșită — încearcă din nou.</div>
       <button id="pwSubmit" class="w-full px-4 py-3 rounded-lg bg-[#009639] text-white font-semibold hover:bg-[#007a2e] transition-colors">Intră</button>
     </div>`;
-  document.getElementById("backBtn").onclick = () => { state.team = null; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => {
+    if (team) { state.team = null; renderTeamPicker(); } else { state.role = null; renderRoleSelect(); }
+  };
 
   const input = document.getElementById("pwInput");
   const submit = () => {
     const expected = isPlayer ? TEAM_PASSWORD : REFEREE_PASSWORD;
     if (input.value === expected) {
       state.authed = true;
-      if (isPlayer) renderPlayerScreen(); else renderRefereeScreen();
+      if (isPlayer) { renderPlayerScreen(); return; }
+      if (team) { renderRefereeScreen(); } else { renderTeamPicker(); } // referee: pick which team to view first
     } else {
       document.getElementById("pwError").classList.remove("hidden");
       input.value = "";
@@ -1111,12 +1118,15 @@ function drawRefereeTasks(team, submissions) {
   const totalScore = Object.values(submissions).reduce((s, sub) => s + (sub.score || 0), 0);
 
   const summary = `
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between">
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex items-center justify-between gap-2 flex-wrap">
       <div>
         <div class="text-xs uppercase tracking-wide text-gray-400 font-bold">Scor echipă</div>
         <div class="text-2xl font-bold text-[#009639]">${totalScore} pct</div>
       </div>
-      <button id="viewBoardBtn" class="text-sm font-semibold text-[#7a8c00] hover:underline">🏆 Vezi clasamentul</button>
+      <div class="flex items-center gap-3">
+        <button id="switchTeamBtn" class="text-sm font-semibold text-[#ff9800] hover:underline">🔀 Schimbă echipa</button>
+        <button id="viewBoardBtn" class="text-sm font-semibold text-[#7a8c00] hover:underline">🏆 Vezi clasamentul</button>
+      </div>
     </div>`;
 
   const taskCards = TASKS.map(task => {
@@ -1171,6 +1181,7 @@ function drawRefereeTasks(team, submissions) {
 
   document.getElementById("logoffBtn").onclick = doLogoff;
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
+  document.getElementById("switchTeamBtn").onclick = () => renderTeamPicker();
   wireLightboxImages();
 
   document.querySelectorAll("[data-score-controls]").forEach(ctrl => {
