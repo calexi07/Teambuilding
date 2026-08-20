@@ -19,6 +19,7 @@
 <body class="min-h-screen bg-gradient-to-br from-[#f8faf9] via-[#e8f3ec] to-[#eef8f0] p-4 sm:p-8">
 
 <div id="app" class="max-w-2xl mx-auto pb-24"></div>
+<div id="activityWidgetRoot"></div>
 <div id="chatWidgetRoot"></div>
 <div id="toastRoot" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
 
@@ -102,12 +103,26 @@ let realtimeChannel = null;
 // ---------- CHAT WIDGET (floating, separate from page content) ----------
 const chatRoot = document.getElementById("chatWidgetRoot");
 const toastRoot = document.getElementById("toastRoot");
-let chatCtx = null; // { teamId, viewerRole, counterpartLabel, counterpartEmoji }
-let chatMessages = [];
+
+let chatMode = null;           // "single" (player) | "inbox" (referee)
 let chatOpen = false;
-let unreadCount = 0;
 let chatRealtimeChannel = null;
 let chatPollId = null;
+
+// single mode (player)
+let singleCtx = null;          // { teamId, counterpartLabel, counterpartEmoji }
+let singleMessages = [];
+let singleUnread = 0;
+
+// inbox mode (referee)
+let inboxThreads = {};         // teamId -> { messages: [], unread: 0 }
+let activeThreadTeamId = null; // null = list view
+
+function totalUnread() {
+  if (chatMode === "single") return singleUnread;
+  if (chatMode === "inbox") return Object.values(inboxThreads).reduce((s, t) => s + t.unread, 0);
+  return 0;
+}
 
 function showToast(text) {
   const el = document.createElement("div");
@@ -123,66 +138,66 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function renderChatWidget() {
-  if (!chatCtx) { chatRoot.innerHTML = ""; return; }
-  chatRoot.innerHTML = `
-    <div class="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
-      <div id="chatPanel" class="hidden w-80 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
-        <div class="bg-gradient-to-r from-[#009639] to-[#007a2e] text-white px-4 py-3 flex items-center gap-2">
-          <span class="text-xl">${chatCtx.counterpartEmoji}</span>
-          <div>
-            <div class="text-xs uppercase tracking-wide opacity-80 font-bold">Conversație cu</div>
-            <div class="font-bold text-sm">${chatCtx.counterpartLabel}</div>
-          </div>
-          <button id="chatCloseBtn" class="ml-auto text-white/80 hover:text-white text-lg leading-none">&times;</button>
-        </div>
-        <div id="chatMessages" class="h-72 overflow-y-auto flex flex-col gap-2 p-3"></div>
-        <div class="flex gap-2 p-3 border-t border-gray-100">
-          <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
-          <button id="chatSend" class="px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
-        </div>
-      </div>
-      <button id="chatBubbleBtn" class="relative w-14 h-14 rounded-full bg-[#009639] text-white text-2xl shadow-xl hover:bg-[#007a2e] transition-colors flex items-center justify-center">
-        🔔
-        <span id="chatBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${unreadCount > 0 ? "" : "hidden"}">${unreadCount}</span>
-      </button>
-    </div>`;
-
-  document.getElementById("chatBubbleBtn").onclick = toggleChatPanel;
-  document.getElementById("chatCloseBtn").onclick = () => { chatOpen = false; syncChatPanelVisibility(); };
-  document.getElementById("chatSend").onclick = sendChatMessage;
-  document.getElementById("chatInput").onkeydown = (e) => { if (e.key === "Enter") sendChatMessage(); };
-
-  drawChatMessages();
+function updateBadge() {
+  const badge = document.getElementById("chatBadge");
+  if (!badge) return;
+  const n = totalUnread();
+  badge.textContent = n > 99 ? "99+" : n;
+  badge.classList.toggle("hidden", n === 0);
 }
 
-function syncChatPanelVisibility() {
-  const panel = document.getElementById("chatPanel");
-  if (!panel) return;
-  panel.classList.toggle("hidden", !chatOpen);
-  if (chatOpen) {
-    unreadCount = 0;
-    const badge = document.getElementById("chatBadge");
-    if (badge) badge.classList.add("hidden");
-    const box = document.getElementById("chatMessages");
-    if (box) box.scrollTop = box.scrollHeight;
-  }
+function renderChatWidget() {
+  if (!chatMode) { chatRoot.innerHTML = ""; return; }
+  chatRoot.innerHTML = `
+    <div class="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+      <div id="chatPanel" class="hidden fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-5 w-full sm:w-80 h-full sm:h-auto sm:max-h-[32rem] bg-white rounded-none sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50 flex-col"></div>
+      <button id="chatBubbleBtn" class="relative w-14 h-14 rounded-full bg-[#009639] text-white text-2xl shadow-xl hover:bg-[#007a2e] transition-colors flex items-center justify-center">
+        💬
+        <span id="chatBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center hidden"></span>
+      </button>
+    </div>`;
+  document.getElementById("chatBubbleBtn").onclick = toggleChatPanel;
+  updateBadge();
+  drawPanelContent();
 }
 
 function toggleChatPanel() {
   chatOpen = !chatOpen;
-  syncChatPanelVisibility();
+  const panel = document.getElementById("chatPanel");
+  if (panel) {
+    panel.classList.toggle("hidden", !chatOpen);
+    panel.classList.toggle("flex", chatOpen);
+  }
+  if (chatOpen) {
+    if (chatMode === "single") {
+      singleUnread = 0;
+    } else if (chatMode === "inbox" && activeThreadTeamId) {
+      inboxThreads[activeThreadTeamId].unread = 0;
+    }
+    updateBadge();
+    drawPanelContent();
+  }
 }
 
-function drawChatMessages() {
-  const box = document.getElementById("chatMessages");
-  if (!box || !chatCtx) return;
-  if (chatMessages.length === 0) {
-    box.innerHTML = `<div class="text-xs text-gray-400 text-center mt-6">Niciun mesaj încă. Scrie primul!</div>`;
-    return;
+function threadHeaderHtml(emoji, label, showBackToInbox) {
+  return `
+    <div class="shrink-0 bg-gradient-to-r from-[#009639] to-[#007a2e] text-white px-4 py-3 flex items-center gap-2">
+      ${showBackToInbox ? `<button id="chatBackBtn" class="text-white/80 hover:text-white text-lg leading-none mr-1">&larr;</button>` : ""}
+      <span class="text-xl">${emoji}</span>
+      <div>
+        <div class="text-xs uppercase tracking-wide opacity-80 font-bold">Conversație cu</div>
+        <div class="font-bold text-sm">${label}</div>
+      </div>
+      <button id="chatCloseBtn" title="Minimizează" class="ml-auto text-white/80 hover:text-white text-xl leading-none">&#8964;</button>
+    </div>`;
+}
+
+function messageBubblesHtml(messages, viewerRole) {
+  if (messages.length === 0) {
+    return `<div class="text-xs text-gray-400 text-center mt-6">Niciun mesaj încă. Scrie primul!</div>`;
   }
-  box.innerHTML = chatMessages.map(m => {
-    const mine = m.sender === chatCtx.viewerRole;
+  return messages.map(m => {
+    const mine = m.sender === viewerRole;
     const label = m.sender === "referee" ? "Arbitru" : "Echipă";
     return `
       <div class="flex ${mine ? "justify-end" : "justify-start"}">
@@ -192,65 +207,391 @@ function drawChatMessages() {
         </div>
       </div>`;
   }).join("");
-  if (chatOpen) box.scrollTop = box.scrollHeight;
 }
 
-async function sendChatMessage() {
+function drawPanelContent() {
+  const panel = document.getElementById("chatPanel");
+  if (!panel) return;
+
+  if (chatMode === "single") {
+    panel.innerHTML =
+      threadHeaderHtml(singleCtx.counterpartEmoji, singleCtx.counterpartLabel, false) +
+      `<div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-3">${messageBubblesHtml(singleMessages, "player")}</div>
+       <div class="shrink-0 flex gap-2 p-3 border-t border-gray-100">
+         <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
+         <button id="chatSend" class="px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
+       </div>`;
+    wireCloseAndSend("player", () => singleCtx.teamId);
+    const box = document.getElementById("chatMessages");
+    if (box && chatOpen) box.scrollTop = box.scrollHeight;
+    return;
+  }
+
+  // inbox mode (referee)
+  if (!activeThreadTeamId) {
+    const rows = TEAMS.map(t => {
+      const thread = inboxThreads[t.id] || { messages: [], unread: 0 };
+      const last = thread.messages[thread.messages.length - 1];
+      const preview = last ? (last.sender === "referee" ? "Tu: " : "") + last.content : "Niciun mesaj încă";
+      return `
+        <button class="inboxRow w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-50" data-team="${t.id}">
+          <span class="text-2xl">${t.emoji}</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-sm text-gray-800 truncate">${t.name}</div>
+            <div class="text-xs text-gray-400 truncate">${escapeHtml(preview)}</div>
+          </div>
+          ${thread.unread > 0 ? `<span class="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">${thread.unread}</span>` : ""}
+        </button>`;
+    }).join("");
+    panel.innerHTML = `
+      <div class="shrink-0 bg-gradient-to-r from-[#009639] to-[#007a2e] text-white px-4 py-3 flex items-center gap-2">
+        <span class="text-xl">🛡️</span>
+        <div class="font-bold text-sm">Conversații cu echipele</div>
+        <button id="chatCloseBtn" title="Minimizează" class="ml-auto text-white/80 hover:text-white text-xl leading-none">&#8964;</button>
+      </div>
+      <div class="flex-1 min-h-0 overflow-y-auto">${rows}</div>`;
+    document.getElementById("chatCloseBtn").onclick = () => { chatOpen = false; syncClose(); };
+    panel.querySelectorAll(".inboxRow").forEach(row => {
+      row.onclick = () => {
+        activeThreadTeamId = row.dataset.team;
+        inboxThreads[activeThreadTeamId].unread = 0;
+        updateBadge();
+        drawPanelContent();
+      };
+    });
+    return;
+  }
+
+  const team = TEAMS.find(t => t.id === activeThreadTeamId);
+  const thread = inboxThreads[activeThreadTeamId];
+  panel.innerHTML =
+    threadHeaderHtml(team.emoji, team.name, true) +
+    `<div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 p-3">${messageBubblesHtml(thread.messages, "referee")}</div>
+     <div class="shrink-0 flex gap-2 p-3 border-t border-gray-100">
+       <input id="chatInput" type="text" placeholder="Scrie un mesaj..." class="flex-1 text-sm border-2 border-gray-200 rounded-lg px-3 py-2 focus:border-[#009639] focus:outline-none">
+       <button id="chatSend" class="px-3 py-2 rounded-lg bg-[#009639] text-white text-sm font-semibold hover:bg-[#007a2e] transition-colors">➤</button>
+     </div>`;
+  document.getElementById("chatBackBtn").onclick = () => { activeThreadTeamId = null; drawPanelContent(); };
+  wireCloseAndSend("referee", () => activeThreadTeamId);
+  const box = document.getElementById("chatMessages");
+  if (box && chatOpen) box.scrollTop = box.scrollHeight;
+}
+
+function syncClose() {
+  const panel = document.getElementById("chatPanel");
+  if (panel) panel.classList.add("hidden");
+}
+
+function wireCloseAndSend(viewerRole, getTeamId) {
+  const closeBtn = document.getElementById("chatCloseBtn");
+  if (closeBtn) closeBtn.onclick = () => { chatOpen = false; syncClose(); };
+  const sendBtn = document.getElementById("chatSend");
   const input = document.getElementById("chatInput");
-  const text = input.value.trim();
-  if (!text || !chatCtx) return;
-  input.value = "";
-  try {
-    await supabase.from("messages").insert({ team_id: chatCtx.teamId, sender: chatCtx.viewerRole, content: text });
-  } catch (e) { console.error(e); }
+  const send = async () => {
+    const text = input.value.trim();
+    const teamId = getTeamId();
+    if (!text || !teamId) return;
+    input.value = "";
+    try {
+      await supabase.from("messages").insert({ team_id: teamId, sender: viewerRole, content: text });
+    } catch (e) { console.error(e); }
+  };
+  if (sendBtn) sendBtn.onclick = send;
+  if (input) input.onkeydown = (e) => { if (e.key === "Enter") send(); };
 }
 
 async function loadChatHistory(teamId) {
   const { data, error } = await supabase.from("messages").select("*").eq("team_id", teamId).order("created_at", { ascending: true });
-  if (error) { console.error(e); return []; }
+  if (error) { console.error(error); return []; }
   return data;
 }
 
 function teardownChat() {
   if (chatRealtimeChannel) { supabase.removeChannel(chatRealtimeChannel); chatRealtimeChannel = null; }
   if (chatPollId) { clearInterval(chatPollId); chatPollId = null; }
-  chatCtx = null;
-  chatMessages = [];
+  chatMode = null;
   chatOpen = false;
-  unreadCount = 0;
+  singleCtx = null;
+  singleMessages = [];
+  singleUnread = 0;
+  inboxThreads = {};
+  activeThreadTeamId = null;
   chatRoot.innerHTML = "";
 }
 
-async function setupChat(teamId, viewerRole, counterpartLabel, counterpartEmoji) {
+// ---- player: single-thread chat with their own team's referee ----
+async function setupChat(teamId, counterpartLabel, counterpartEmoji) {
   teardownChat();
-  chatCtx = { teamId, viewerRole, counterpartLabel, counterpartEmoji };
-  chatMessages = await loadChatHistory(teamId);
+  chatMode = "single";
+  singleCtx = { teamId, counterpartLabel, counterpartEmoji };
+  singleMessages = await loadChatHistory(teamId);
   renderChatWidget();
 
+  const handleIncoming = (msg) => {
+    if (singleMessages.some(m => m.id === msg.id)) return;
+    singleMessages.push(msg);
+    if (msg.sender !== "player") {
+      if (!chatOpen) { singleUnread += 1; updateBadge(); }
+      showToast(`Mesaj nou de la ${counterpartLabel}: "${msg.content.slice(0, 60)}"`);
+    }
+    if (chatOpen) drawPanelContent();
+  };
+
   chatRealtimeChannel = supabase
-    .channel(`chat-${teamId}-${viewerRole}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `team_id=eq.${teamId}` }, (payload) => {
-      chatMessages.push(payload.new);
-      drawChatMessages();
-      if (payload.new.sender !== viewerRole) {
-        if (!chatOpen) {
-          unreadCount += 1;
-          const badge = document.getElementById("chatBadge");
-          if (badge) { badge.textContent = unreadCount; badge.classList.remove("hidden"); }
-        }
-        const fromLabel = payload.new.sender === "referee" ? "Arbitru" : counterpartLabel;
-        showToast(`Mesaj nou de la ${fromLabel}: "${payload.new.content.slice(0, 60)}"`);
-      }
-    })
+    .channel(`chat-player-${teamId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `team_id=eq.${teamId}` }, (payload) => handleIncoming(payload.new))
     .subscribe();
 
   chatPollId = setInterval(async () => {
     const fresh = await loadChatHistory(teamId);
-    if (fresh.length !== chatMessages.length) {
-      chatMessages = fresh;
-      drawChatMessages();
+    const newOnes = fresh.filter(f => !singleMessages.some(m => m.id === f.id));
+    newOnes.forEach(handleIncoming);
+  }, 4000);
+}
+
+// ---- referee: Messenger-style inbox across all teams ----
+async function setupRefereeInbox() {
+  teardownChat();
+  chatMode = "inbox";
+  for (const t of TEAMS) inboxThreads[t.id] = { messages: [], unread: 0 };
+
+  const all = await Promise.all(TEAMS.map(t => loadChatHistory(t.id)));
+  TEAMS.forEach((t, i) => { inboxThreads[t.id].messages = all[i]; });
+
+  renderChatWidget();
+
+  const handleIncoming = (msg) => {
+    const thread = inboxThreads[msg.team_id];
+    if (!thread) return;
+    if (thread.messages.some(m => m.id === msg.id)) return;
+    thread.messages.push(msg);
+    if (msg.sender === "player") {
+      const isViewingThisThread = chatOpen && activeThreadTeamId === msg.team_id;
+      if (!isViewingThisThread) {
+        thread.unread += 1;
+        updateBadge();
+      }
+      const teamName = TEAMS.find(t => t.id === msg.team_id)?.name || "o echipă";
+      showToast(`Mesaj nou de la ${teamName}: "${msg.content.slice(0, 60)}"`);
     }
-  }, 8000);
+    if (chatOpen) drawPanelContent();
+  };
+
+  chatRealtimeChannel = supabase
+    .channel(`chat-referee-inbox`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => handleIncoming(payload.new))
+    .subscribe();
+
+  chatPollId = setInterval(async () => {
+    for (const t of TEAMS) {
+      const fresh = await loadChatHistory(t.id);
+      const thread = inboxThreads[t.id];
+      const newOnes = fresh.filter(f => !thread.messages.some(m => m.id === f.id));
+      newOnes.forEach(handleIncoming);
+    }
+  }, 4000);
+}
+
+// ---------- ACTIVITY FEED (referee only) ----------
+const activityRoot = document.getElementById("activityWidgetRoot");
+let activityItems = [];
+let activityOpen = false;
+let activityUnread = 0;
+let activityRealtimeChannel = null;
+let activityPollId = null;
+let lastActivitySeen = {}; // submission id -> updated_at seen, to detect real changes on poll
+
+function getTaskInfo(taskId) {
+  if (taskId.startsWith("hunt-")) {
+    const item = HUNT_ITEMS.find(h => `hunt-${h.id}` === taskId);
+    return { title: `Vânătoare de obiecte — ${item ? item.label : taskId}` };
+  }
+  const task = TASKS.find(t => t.id === taskId);
+  return { title: task ? task.title : taskId };
+}
+
+function timeAgo(iso) {
+  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "acum";
+  if (mins < 60) return `acum ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  return `acum ${hrs} h`;
+}
+
+function updateActivityBadge() {
+  const badge = document.getElementById("activityBadge");
+  if (!badge) return;
+  badge.textContent = activityUnread > 99 ? "99+" : activityUnread;
+  badge.classList.toggle("hidden", activityUnread === 0);
+}
+
+function renderActivityWidget() {
+  activityRoot.innerHTML = `
+    <div class="fixed bottom-5 right-24 z-40">
+      <div id="activityPanel" class="hidden fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-24 w-full sm:w-80 h-full sm:h-auto sm:max-h-[32rem] bg-white rounded-none sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50 flex-col"></div>
+      <button id="activityBubbleBtn" class="relative w-14 h-14 rounded-full bg-[#ff9800] text-white text-2xl shadow-xl hover:bg-[#e65100] transition-colors flex items-center justify-center">
+        🔔
+        <span id="activityBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center hidden"></span>
+      </button>
+    </div>`;
+  document.getElementById("activityBubbleBtn").onclick = toggleActivityPanel;
+  updateActivityBadge();
+  drawActivityList();
+}
+
+function toggleActivityPanel() {
+  activityOpen = !activityOpen;
+  const panel = document.getElementById("activityPanel");
+  if (panel) {
+    panel.classList.toggle("hidden", !activityOpen);
+    panel.classList.toggle("flex", activityOpen);
+  }
+  if (activityOpen) {
+    activityUnread = 0;
+    updateActivityBadge();
+  }
+  drawActivityList();
+}
+
+function drawActivityList() {
+  const panel = document.getElementById("activityPanel");
+  if (!panel) return;
+  const rows = activityItems.length === 0
+    ? `<div class="text-xs text-gray-400 text-center mt-8 px-4">Nicio activitate încă.</div>`
+    : activityItems.map(item => `
+        <button class="activityRow w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-50" data-team="${item.teamId}">
+          <span class="text-xl">${item.emoji}</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-gray-800"><span class="font-semibold">${item.teamName}</span> a trimis pentru <span class="font-semibold">${escapeHtml(item.taskTitle)}</span></div>
+            <div class="text-xs text-gray-400 mt-0.5">${timeAgo(item.at)}</div>
+          </div>
+        </button>`).join("");
+  panel.innerHTML = `
+    <div class="shrink-0 bg-gradient-to-r from-[#ff9800] to-[#e65100] text-white px-4 py-3 flex items-center gap-2">
+      <span class="text-xl">🔔</span>
+      <div class="font-bold text-sm">Activitate echipe</div>
+      <button id="activityCloseBtn" title="Minimizează" class="ml-auto text-white/80 hover:text-white text-xl leading-none">&#8964;</button>
+    </div>
+    <div class="flex-1 min-h-0 overflow-y-auto">${rows}</div>`;
+  document.getElementById("activityCloseBtn").onclick = () => { activityOpen = false; const p = document.getElementById("activityPanel"); if (p) p.classList.add("hidden"); };
+  panel.querySelectorAll(".activityRow").forEach(row => {
+    row.onclick = () => {
+      const team = TEAMS.find(t => t.id === row.dataset.team);
+      if (!team) return;
+      activityOpen = false;
+      const p = document.getElementById("activityPanel");
+      if (p) p.classList.add("hidden");
+      state.team = team;
+      renderRefereeScreen();
+    };
+  });
+}
+
+function pushActivity(row) {
+  const team = TEAMS.find(t => t.id === row.team_id);
+  if (!team) return;
+  const info = getTaskInfo(row.task_id);
+  activityItems.unshift({
+    teamId: row.team_id, teamName: team.name, emoji: team.emoji,
+    taskTitle: info.title, at: row.updated_at || row.submitted_at || new Date().toISOString(),
+  });
+  activityItems = activityItems.slice(0, 30);
+  if (!activityOpen) { activityUnread += 1; updateActivityBadge(); }
+  showToast(`${team.emoji} ${team.name} a trimis pentru ${info.title}`);
+  if (activityOpen) drawActivityList();
+}
+
+async function setupRefereeActivity() {
+  teardownActivity();
+  const { data } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(20);
+  (data || []).slice().reverse().forEach(row => {
+    lastActivitySeen[row.id] = row.updated_at;
+    const team = TEAMS.find(t => t.id === row.team_id);
+    if (!team) return;
+    const info = getTaskInfo(row.task_id);
+    activityItems.unshift({ teamId: row.team_id, teamName: team.name, emoji: team.emoji, taskTitle: info.title, at: row.updated_at });
+  });
+  activityItems = activityItems.slice(0, 30);
+  renderActivityWidget();
+
+  activityRealtimeChannel = supabase
+    .channel("referee-activity")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "submissions" }, (payload) => {
+      lastActivitySeen[payload.new.id] = payload.new.updated_at;
+      pushActivity(payload.new);
+    })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "submissions" }, (payload) => {
+      // only notify when the actual content changed (new/replaced photo or text) — not when a referee only scored it
+      if (payload.old && payload.old.content !== payload.new.content) {
+        lastActivitySeen[payload.new.id] = payload.new.updated_at;
+        pushActivity(payload.new);
+      }
+    })
+    .subscribe();
+
+  activityPollId = setInterval(async () => {
+    const { data: fresh } = await supabase.from("submissions").select("*").order("updated_at", { ascending: false }).limit(20);
+    (fresh || []).forEach(row => {
+      if (lastActivitySeen[row.id] !== row.updated_at) {
+        lastActivitySeen[row.id] = row.updated_at;
+        pushActivity(row);
+      }
+    });
+  }, 5000);
+}
+
+function teardownActivity() {
+  if (activityRealtimeChannel) { supabase.removeChannel(activityRealtimeChannel); activityRealtimeChannel = null; }
+  if (activityPollId) { clearInterval(activityPollId); activityPollId = null; }
+  activityItems = [];
+  activityUnread = 0;
+  activityOpen = false;
+  lastActivitySeen = {};
+  activityRoot.innerHTML = "";
+}
+
+// ---------- LIGHTBOX (full image view + download, referee only) ----------
+function openLightbox(url) {
+  const overlay = document.createElement("div");
+  overlay.id = "lightboxOverlay";
+  overlay.className = "fixed inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-4";
+  overlay.innerHTML = `
+    <button id="lightboxClose" class="absolute top-4 right-4 text-white text-3xl leading-none">&times;</button>
+    <img src="${url}" class="max-w-full max-h-[75vh] rounded-lg shadow-2xl object-contain">
+    <button id="lightboxDownload" class="mt-5 px-5 py-2.5 rounded-lg bg-[#009639] text-white font-semibold hover:bg-[#007a2e] transition-colors">⬇ Descarcă poza</button>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById("lightboxClose").onclick = () => overlay.remove();
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  document.getElementById("lightboxDownload").onclick = async (e) => {
+    const btn = e.currentTarget;
+    btn.textContent = "Se descarcă...";
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = url.split("/").pop() || "poza.jpg";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+      btn.textContent = "⬇ Descarcă poza";
+    } catch (err) {
+      console.error(err);
+      window.open(url, "_blank");
+      btn.textContent = "⬇ Descarcă poza";
+    }
+  };
+}
+
+function wireLightboxImages() {
+  document.querySelectorAll(".lightboxImg").forEach(img => {
+    img.style.cursor = "zoom-in";
+    img.onclick = () => openLightbox(img.dataset.url || img.src);
+  });
 }
 
 // ---------- HELPERS ----------
@@ -287,6 +628,7 @@ function cleanupRealtime() {
 function renderRoleSelect() {
   cleanupRealtime();
   teardownChat();
+  teardownActivity();
   app.innerHTML = `
     ${headerHtml("Let's Go Team", "Sibiu 2026 · Treasure Hunt", false)}
     <p class="text-center text-gray-500 mb-6">Alege spațiul tău</p>
@@ -428,6 +770,7 @@ async function computeLeaderboard() {
 async function renderLeaderboard() {
   cleanupRealtime();
   teardownChat();
+  teardownActivity();
   app.innerHTML = headerHtml("🏆 Clasament live", "Se actualizează automat", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
   document.getElementById("backBtn").onclick = () => { renderRoleSelect(); };
@@ -470,7 +813,7 @@ async function renderPlayerScreen() {
 
   const submissions = await fetchSubmissions(team.id);
   drawPlayerTasks(team, submissions);
-  setupChat(team.id, "player", "Arbitru", "🛡️");
+  setupChat(team.id, "Arbitru", "🛡️");
 }
 
 function drawPlayerTasks(team, submissions) {
@@ -613,11 +956,12 @@ async function renderRefereeScreen() {
   const team = state.team;
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
     `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
-  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownActivity(); state.team = null; state.authed = false; renderTeamPicker(); };
 
   const submissions = await fetchSubmissions(team.id);
   drawRefereeTasks(team, submissions);
-  setupChat(team.id, "referee", `${team.emoji} ${team.name}`, team.emoji);
+  setupRefereeInbox();
+  if (!activityRealtimeChannel) setupRefereeActivity();
 }
 
 function scoreButtonsHtml(taskId, maxPoints, currentApproved, includeBonuses, bonuses) {
@@ -677,7 +1021,7 @@ function drawRefereeTasks(team, submissions) {
           ${statusPillHtml(sub?.score, task.points, !!sub, sub?.approved)}
         </div>
         ${!sub ? `<div class="text-sm text-gray-400 mt-3 bg-gray-50 rounded-lg p-3">Echipa nu a trimis încă această probă.</div>` : ""}
-        ${photoUrl ? `<img src="${photoUrl}" class="w-full max-h-64 object-cover rounded-xl mt-3 mb-2 border border-gray-100">` : ""}
+        ${photoUrl ? `<img src="${photoUrl}" data-url="${photoUrl}" class="lightboxImg w-full max-h-64 object-cover rounded-xl mt-3 mb-2 border border-gray-100">` : ""}
         ${task.needsText && sub ? `<div class="text-sm bg-gray-50 rounded-lg p-3 mb-2 text-gray-700"><span class="font-semibold">${task.textLabel}:</span> ${textAnswer || "—"}</div>` : ""}
         ${sub ? scoreButtonsHtml(task.id, task.points, sub.approved, true, sub.bonuses) : ""}
       </div>`;
@@ -696,7 +1040,7 @@ function drawRefereeTasks(team, submissions) {
                 <div class="text-sm font-semibold text-gray-700">${item.label}</div>
                 ${statusPillHtml(sub?.score, HUNT_POINTS, !!sub, sub?.approved)}
               </div>
-              ${sub?.content ? `<img src="${sub.content}" class="w-full max-h-40 object-cover rounded-lg mb-2 border border-gray-100">` : `<div class="text-xs text-gray-400">Nu a fost trimisă poză.</div>`}
+              ${sub?.content ? `<img src="${sub.content}" data-url="${sub.content}" class="lightboxImg w-full max-h-40 object-cover rounded-lg mb-2 border border-gray-100">` : `<div class="text-xs text-gray-400">Nu a fost trimisă poză.</div>`}
               ${sub ? scoreButtonsHtml(hid, HUNT_POINTS, sub.approved, false, null) : ""}
             </div>`;
         }).join("")}
@@ -706,8 +1050,9 @@ function drawRefereeTasks(team, submissions) {
   app.innerHTML = headerHtml(`${team.emoji} ${team.name}`, "Panou de arbitraj — doar această echipă", true) +
     summary + taskCards + huntCard;
 
-  document.getElementById("backBtn").onclick = () => { teardownChat(); state.team = null; state.authed = false; renderTeamPicker(); };
+  document.getElementById("backBtn").onclick = () => { teardownChat(); teardownActivity(); state.team = null; state.authed = false; renderTeamPicker(); };
   document.getElementById("viewBoardBtn").onclick = () => renderLeaderboard();
+  wireLightboxImages();
 
   document.querySelectorAll("[data-score-controls]").forEach(ctrl => {
     const taskId = ctrl.dataset.scoreControls;
