@@ -100,6 +100,18 @@
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
 
+  /* ---------- SCREEN: intro (round title only, before start) ---------- */
+  .screen-intro{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;}
+  .screen-intro .ic{font-size:clamp(70px,12vw,140px); filter:drop-shadow(0 0 24px rgba(255,215,106,0.5)); margin-bottom:18px;}
+  .screen-intro .eyebrow{letter-spacing:.4em; text-transform:uppercase; font-size:clamp(14px,2vw,20px); color:var(--lavender); font-weight:700; margin-bottom:8px;}
+  .screen-intro h1{
+    font-size:clamp(56px, 12vw, 150px); margin:0; line-height:1.02;
+    background:linear-gradient(100deg, var(--gold) 10%, #fff 40%, var(--magenta) 70%, var(--violet-soft) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 80px rgba(255,215,106,0.3);
+  }
+  .screen-intro .sub{font-size:clamp(18px,3vw,32px); color:var(--lavender); margin-top:18px; font-weight:600;}
+
   /* ---------- SCREEN: video ---------- */
   .screen-video{position:fixed; inset:0; background:#000; display:flex; align-items:center; justify-content:center; z-index:15;}
   .screen-video video{width:100%; height:100%; object-fit:contain;}
@@ -501,6 +513,17 @@ async function renderScreen(){
     return;
   }
 
+  if(stage==='intro'){
+    app.innerHTML = `
+      <div class="screen-intro">
+        <div class="ic">${ROUNDS[round].icon}</div>
+        <div class="eyebrow">Super Stars Night</div>
+        <h1>${ROUNDS[round].title}</h1>
+        <div class="sub">${ROUNDS[round].subtitle}</div>
+      </div>`;
+    return;
+  }
+
   if(stage==='name'){
     app.innerHTML = `
       <div class="screen-name">
@@ -632,6 +655,14 @@ async function renderControl(){
       </div>
 
       <div class="panel">
+        <h3><span>${ROUNDS[round].icon} ${ROUNDS[round].title} — control general probă</span></h3>
+        <div class="stage-btns">
+          <button class="stage-btn${state.stage==='intro'?' active':''}" data-stage="intro">🏁 Titlul probei (mare, înainte de start)</button>
+        </div>
+        <div class="hint" style="margin-top:0;">Afișează titlul și subtitlul probei pe tot ecranul — folosește-l ca ecran de așteptare, între jurizări sau înainte să dai startul la competiție.</div>
+      </div>
+
+      <div class="panel">
         <h3><span>${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}</span></h3>
         <div class="stage-btns">
           <button class="stage-btn${state.stage==='name'?' active':''}" data-stage="name">👤 Arată doar numele</button>
@@ -688,7 +719,7 @@ async function renderControl(){
     </div>`;
 
   app.querySelectorAll('.tab').forEach(btn=>{
-    btn.onclick = async ()=>{ await patchState({round:parseInt(btn.dataset.round,10), stage:'name', video_url:null}); renderControl(); };
+    btn.onclick = async ()=>{ await patchState({round:parseInt(btn.dataset.round,10), stage:'intro', video_url:null}); renderControl(); };
   });
   app.querySelectorAll('.order-btn').forEach(btn=>{
     btn.onclick = async ()=>{
