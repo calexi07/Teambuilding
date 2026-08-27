@@ -99,6 +99,7 @@
     background:linear-gradient(100deg, #fff 10%, var(--gold) 55%, var(--magenta) 95%);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
+  .screen-name .county{font-size:clamp(16px,2.4vw,26px); color:var(--lavender); margin-top:14px; font-weight:600; letter-spacing:.05em;}
 
   /* ---------- SCREEN: intro (round title only, before start) ---------- */
   .screen-intro{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px;}
@@ -132,6 +133,8 @@
     background:linear-gradient(100deg, #fff 10%, var(--gold) 55%, var(--magenta) 95%);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
+  .team-display-wrap{display:flex; flex-direction:column; align-items:center;}
+  .team-display-county{font-size:clamp(13px,1.8vw,18px); color:var(--lavender-dim); margin-top:6px; font-weight:600;}
   .ring-zone{position:relative; width:min(70vw,380px); aspect-ratio:1; margin:34px auto 10px;}
   .ring-svg{position:absolute; inset:0; width:100%; height:100%;}
   .ring-line{stroke:rgba(255,255,255,0.14); stroke-width:2; transition:stroke .4s ease, filter .4s ease;}
@@ -286,6 +289,11 @@ const TEAMS = [
   "Lupii Cibinului","Legendele Brukenthal"
 ];
 const TEAM_ICONS = ["🦅","👁️","🌉","🏰","🗝️","⭐","🧭","🐺","👑"];
+const TEAM_COUNTIES = [
+  "B1 + MS", "AG + SB", "BC + BH", "PH + B3",
+  "OT + TM", "Brand Managers + Trainers", "CT + CJ",
+  "B2 + AH", "IS + GL"
+];
 const DEFAULT_ORDER = TEAMS.map((_,i)=>i);
 
 const JURY = [
@@ -505,7 +513,7 @@ async function renderScreen(){
           ${totals.map((t,i)=>`
             <div class="lb-row${i===0?' top1':''}">
               <div class="rk">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</div>
-              <div class="nm">${t.icon} ${t.name}</div>
+              <div class="nm">${t.icon} ${t.name} <span style="font-size:13px;color:var(--lavender-dim);font-weight:600;">${TEAM_COUNTIES[t.ti]}</span></div>
               <div class="tt num">${t.total}</div>
             </div>`).join('')}
         </div>
@@ -530,6 +538,7 @@ async function renderScreen(){
         <div class="tag">${ROUNDS[round].icon} ${ROUNDS[round].subtitle}</div>
         <div class="ic">${TEAM_ICONS[teamIndex]}</div>
         <h1>${TEAMS[teamIndex]}</h1>
+        <div class="county">${TEAM_COUNTIES[teamIndex]}</div>
       </div>`;
     return;
   }
@@ -549,7 +558,7 @@ async function renderScreen(){
     const song = SONGS.find(s=>s.id===songId);
     app.innerHTML = `
       <div class="screen-song">
-        <div class="who">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]}</div>
+        <div class="who">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} · ${TEAM_COUNTIES[teamIndex]}</div>
         <div class="tag">🎵 Piesa extrasă</div>
         ${song
           ? `<div class="title">${song.title}</div>
@@ -572,7 +581,10 @@ async function renderScreen(){
       <div class="round-badge">${ROUNDS[round].subtitle}</div>
       <div class="team-display">
         <div class="ic">${TEAM_ICONS[teamIndex]}</div>
-        <h1>${TEAMS[teamIndex]}</h1>
+        <div class="team-display-wrap">
+          <h1>${TEAMS[teamIndex]}</h1>
+          <div class="team-display-county">${TEAM_COUNTIES[teamIndex]}</div>
+        </div>
       </div>
       <div class="ring-zone">
         ${ringSVG(JURY.length, filledArr)}
@@ -628,7 +640,7 @@ async function renderControl(){
             <div class="order-row" data-idx="${idx}">
               <div class="drag-handle">⠿</div>
               <div class="order-pos">${idx+1}</div>
-              <div class="order-team">${TEAM_ICONS[ti]} ${TEAMS[ti]}</div>
+              <div class="order-team">${TEAM_ICONS[ti]} ${TEAMS[ti]}<br><span style="font-size:11px;color:var(--lavender-dim);font-weight:600;">${TEAM_COUNTIES[ti]}</span></div>
               <div class="order-actions">
                 <button class="order-btn" data-move="up" data-idx="${idx}" ${idx===0?'disabled':''}>▲</button>
                 <button class="order-btn" data-move="down" data-idx="${idx}" ${idx===order.length-1?'disabled':''}>▼</button>
@@ -649,6 +661,7 @@ async function renderControl(){
           const pos = order.indexOf(ti);
           return `<button class="team-pick${ti===teamIndex?' active':''}${done?' done':''}" data-team="${ti}">
             <span class="ic">${TEAM_ICONS[ti]}</span>${name}
+            <span class="status">${TEAM_COUNTIES[ti]}</span>
             <span class="status">#${pos+1} · ${done?'✓ notat':'—'}</span>
           </button>`;
         }).join('')}
@@ -663,7 +676,7 @@ async function renderControl(){
       </div>
 
       <div class="panel">
-        <h3><span>${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} — ${ROUNDS[round].subtitle}</span></h3>
+        <h3><span>${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]} (${TEAM_COUNTIES[teamIndex]}) — ${ROUNDS[round].subtitle}</span></h3>
         <div class="stage-btns">
           <button class="stage-btn${state.stage==='name'?' active':''}" data-stage="name">👤 Arată doar numele</button>
           <button class="stage-btn${state.stage==='scores'?' active':''}" data-stage="scores">🧮 Arată scorurile</button>
@@ -706,7 +719,7 @@ async function renderControl(){
           <tbody>
             ${totals.map((t,i)=>`<tr>
               <td class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</td>
-              <td>${t.icon} ${t.name}</td>
+              <td>${t.icon} ${t.name}<br><span style="font-size:11px;color:var(--lavender-dim);font-weight:600;">${TEAM_COUNTIES[t.ti]}</span></td>
               <td class="num" style="color:var(--gold);font-weight:700;">${t.total}</td>
             </tr>`).join('')}
           </tbody>
@@ -886,6 +899,7 @@ async function renderJuryScore(jid){
       <div class="jteam-tag">
         <div class="lbl">${ROUNDS[round].icon} ${ROUNDS[round].title} — ${ROUNDS[round].subtitle}</div>
         <div class="val">${TEAM_ICONS[teamIndex]} ${TEAMS[teamIndex]}</div>
+        <div class="lbl" style="margin-top:4px;">${TEAM_COUNTIES[teamIndex]}</div>
       </div>
       <div class="pad">
         ${Array.from({length:10}, (_,i)=>i+1).map(n=>`
