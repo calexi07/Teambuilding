@@ -590,45 +590,73 @@ function teardownActivity() {
 }
 
 // ---------- LIGHTBOX (full image view + download, referee only) ----------
-function openLightbox(url) {
+function openLightbox(urlOrItems, startIndex) {
+  let items, index;
+  if (typeof urlOrItems === "string") {
+    items = [{ url: urlOrItems, name: urlOrItems.split("/").pop() || "poza.jpg", isVideo: false }];
+    index = 0;
+  } else {
+    items = urlOrItems;
+    index = startIndex || 0;
+  }
+
   const overlay = document.createElement("div");
   overlay.id = "lightboxOverlay";
   overlay.className = "fixed inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-4";
-  overlay.innerHTML = `
-    <button id="lightboxClose" class="absolute top-4 right-4 text-white text-3xl leading-none">&times;</button>
-    <img src="${url}" class="max-w-full max-h-[75vh] rounded-lg shadow-2xl object-contain">
-    <button id="lightboxDownload" class="mt-5 px-5 py-2.5 rounded-lg bg-[#009639] text-white font-semibold hover:bg-[#007a2e] transition-colors">⬇ Descarcă poza</button>
-  `;
   document.body.appendChild(overlay);
-  document.getElementById("lightboxClose").onclick = () => overlay.remove();
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-  document.getElementById("lightboxDownload").onclick = async (e) => {
-    const btn = e.currentTarget;
-    btn.textContent = "Se descarcă...";
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = url.split("/").pop() || "poza.jpg";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(blobUrl);
-      btn.textContent = "⬇ Descarcă poza";
-    } catch (err) {
-      console.error(err);
-      window.open(url, "_blank");
-      btn.textContent = "⬇ Descarcă poza";
-    }
+
+  const cleanup = () => { document.removeEventListener("keydown", onKey); overlay.remove(); };
+
+  const onKey = (e) => {
+    if (e.key === "Escape") { cleanup(); }
+    else if (e.key === "ArrowLeft" && items.length > 1) { index = (index - 1 + items.length) % items.length; render(); }
+    else if (e.key === "ArrowRight" && items.length > 1) { index = (index + 1) % items.length; render(); }
   };
+  document.addEventListener("keydown", onKey);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) cleanup(); });
+
+  function render() {
+    const item = items[index];
+    overlay.innerHTML = `
+      <button id="lightboxClose" class="absolute top-4 right-4 text-white text-3xl leading-none z-10">&times;</button>
+      ${items.length > 1 ? `<button id="lightboxPrev" class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 text-white text-3xl leading-none w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 z-10">&lsaquo;</button>` : ""}
+      ${items.length > 1 ? `<button id="lightboxNext" class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 text-white text-3xl leading-none w-11 h-11 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 z-10">&rsaquo;</button>` : ""}
+      ${item.isVideo
+        ? `<video src="${item.url}" controls autoplay playsinline class="max-w-full max-h-[75vh] rounded-lg shadow-2xl bg-black"></video>`
+        : `<img src="${item.url}" class="max-w-full max-h-[75vh] rounded-lg shadow-2xl object-contain">`}
+      ${items.length > 1 ? `<div class="text-white/70 text-sm mt-3">${index + 1} / ${items.length}</div>` : ""}
+      <button id="lightboxDownload" class="mt-4 px-5 py-2.5 rounded-lg bg-[#009639] text-white font-semibold hover:bg-[#007a2e] transition-colors">⬇ Descarcă ${item.isVideo ? "filmarea" : "poza"}</button>
+    `;
+    document.getElementById("lightboxClose").onclick = cleanup;
+    if (items.length > 1) {
+      document.getElementById("lightboxPrev").onclick = (e) => { e.stopPropagation(); index = (index - 1 + items.length) % items.length; render(); };
+      document.getElementById("lightboxNext").onclick = (e) => { e.stopPropagation(); index = (index + 1) % items.length; render(); };
+    }
+    document.getElementById("lightboxDownload").onclick = async (e) => {
+      const btn = e.currentTarget;
+      btn.textContent = "Se descarcă...";
+      try {
+        await downloadFile(item.url, item.name || item.url.split("/").pop() || "fisier");
+      } catch (err) {
+        console.error(err);
+        window.open(item.url, "_blank");
+      }
+      btn.textContent = `⬇ Descarcă ${item.isVideo ? "filmarea" : "poza"}`;
+    };
+  }
+
+  render();
 }
 
 function wireLightboxImages() {
-  document.querySelectorAll(".lightboxImg").forEach(img => {
+  const imgs = Array.from(document.querySelectorAll(".lightboxImg"));
+  const items = imgs.map(img => {
+    const url = img.dataset.url || img.src;
+    return { url, name: url.split("/").pop() || "poza.jpg", isVideo: false };
+  });
+  imgs.forEach((img, i) => {
     img.style.cursor = "zoom-in";
-    img.onclick = () => openLightbox(img.dataset.url || img.src);
+    img.onclick = () => openLightbox(items, i);
   });
 }
 
@@ -750,7 +778,7 @@ function drawGallery() {
                 <input type="checkbox" class="gallerySelectCheckbox" ${gallerySelected.has(p.path) ? "checked" : ""}>
               </label>` : ""}
             ${p.isVideo
-              ? `<video src="${p.url}" muted playsinline class="w-full h-32 object-cover bg-black"></video>`
+              ? `<video src="${p.url}" muted playsinline class="w-full h-32 object-cover bg-black galleryVideo"></video>`
               : `<img src="${p.url}" class="w-full h-32 object-cover galleryImg" data-url="${p.url}">`}
             <button class="galleryDownloadBtn absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center text-[#009639] text-sm" title="Descarcă">⬇</button>
           </div>`).join("")}
@@ -818,9 +846,15 @@ function drawGallery() {
       downloadBtn.textContent = "⬇";
     };
     const img = item.querySelector(".galleryImg");
-    if (img && !gallerySelectMode) {
-      img.style.cursor = "zoom-in";
-      img.onclick = () => openLightbox(photo.url);
+    const vid = item.querySelector(".galleryVideo");
+    if (!gallerySelectMode) {
+      const openThis = () => {
+        const items = galleryPhotos.map(p => ({ url: p.url, name: p.name, isVideo: p.isVideo }));
+        const idx = galleryPhotos.findIndex(p => p.path === path);
+        openLightbox(items, idx);
+      };
+      if (img) { img.style.cursor = "zoom-in"; img.onclick = openThis; }
+      if (vid) { vid.style.cursor = "zoom-in"; vid.onclick = openThis; }
     }
   });
 
