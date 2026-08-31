@@ -31,6 +31,7 @@
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
@@ -631,6 +632,210 @@ function wireLightboxImages() {
   });
 }
 
+// ---------- PHOTO GALLERY (public, no login required) ----------
+const GALLERY_FOLDERS = [...TEAMS.map(t => t.id), "gallery"];
+const VIDEO_EXTS = ["mp4", "mov", "webm", "m4v", "avi", "mkv"];
+
+let galleryPhotos = [];
+let gallerySelected = new Set();
+let gallerySelectMode = false;
+
+async function fetchGalleryPhotos() {
+  const results = [];
+  for (const folder of GALLERY_FOLDERS) {
+    const { data, error } = await supabase.storage.from("submissions").list(folder, {
+      limit: 1000,
+      sortBy: { column: "created_at", order: "desc" },
+    });
+    if (error || !data) continue;
+    for (const obj of data) {
+      if (!obj.name || obj.id === null) continue; // skip subfolders
+      const path = `${folder}/${obj.name}`;
+      const { data: pub } = supabase.storage.from("submissions").getPublicUrl(path);
+      const ext = (obj.name.split(".").pop() || "").toLowerCase();
+      const isVideo = VIDEO_EXTS.includes(ext);
+      results.push({ path, url: pub.publicUrl, isVideo, name: obj.name, folder });
+    }
+  }
+  results.sort((a, b) => b.name.localeCompare(a.name));
+  return results;
+}
+
+async function uploadGalleryFiles(fileList) {
+  for (const file of fileList) {
+    const isVideo = file.type.startsWith("video/");
+    let toUpload = file;
+    let ext = (file.name.split(".").pop() || (isVideo ? "mp4" : "jpg")).toLowerCase();
+    let contentType = file.type || (isVideo ? "video/mp4" : "image/jpeg");
+    if (!isVideo) {
+      toUpload = await compressImage(file);
+      ext = "jpg";
+      contentType = "image/jpeg";
+    }
+    const path = `gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("submissions").upload(path, toUpload, { contentType });
+    if (error) throw error;
+  }
+}
+
+async function downloadFile(url, filename) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
+async function downloadSelectedGalleryPhotos() {
+  const items = galleryPhotos.filter(p => gallerySelected.has(p.path));
+  if (items.length === 0) return;
+  const zip = new JSZip();
+  for (const item of items) {
+    const res = await fetch(item.url);
+    const blob = await res.blob();
+    zip.file(item.name, blob);
+  }
+  const content = await zip.generateAsync({ type: "blob" });
+  const blobUrl = URL.createObjectURL(content);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = `galerie-foto-${Date.now()}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
+async function renderGalleryScreen() {
+  cleanupRealtime();
+  teardownChat();
+  teardownActivity();
+  teardownScoreWatcher();
+  gallerySelected = new Set();
+  gallerySelectMode = false;
+  app.innerHTML = headerHtml("📸 Galerie foto", "Toate pozele echipelor", true) +
+    `<div class="flex justify-center py-12 text-gray-400">Se încarcă...</div>`;
+  document.getElementById("backBtn").onclick = () => renderRoleSelect();
+  galleryPhotos = await fetchGalleryPhotos();
+  drawGallery();
+}
+
+function drawGallery() {
+  const toolbar = `
+    <div class="flex flex-wrap items-center gap-3 mb-2">
+      <label class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg border-2 border-[#009639] text-[#009639] hover:bg-[#e8f5ed] cursor-pointer transition-colors">
+        📤 Încarcă poze
+        <input type="file" id="galleryUploadInput" accept="image/*,video/*" multiple class="hidden">
+      </label>
+      <button id="gallerySelectToggle" class="text-sm font-semibold px-4 py-2 rounded-lg border-2 transition-colors ${gallerySelectMode ? "border-[#ff9800] text-[#ff9800] bg-[#fff4e6]" : "border-gray-200 text-gray-500 hover:border-[#ff9800]"}">
+        ${gallerySelectMode ? "✓ Ieși din selecție" : "☑️ Selectează poze"}
+      </button>
+      ${gallerySelectMode ? `<button id="gallerySelectAllBtn" class="text-sm font-semibold px-4 py-2 rounded-lg border-2 border-gray-200 text-gray-500 hover:border-[#009639]">${gallerySelected.size === galleryPhotos.length && galleryPhotos.length > 0 ? "Deselectează tot" : "Selectează tot"}</button>` : ""}
+    </div>
+    <div id="galleryUploadStatus" class="text-xs text-gray-400 mb-4"></div>
+  `;
+
+  const grid = galleryPhotos.length === 0
+    ? `<div class="text-center text-gray-400 py-12">Nicio poză încărcată încă.</div>`
+    : `<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 ${gallerySelectMode ? "mb-24" : ""}">
+        ${galleryPhotos.map(p => `
+          <div class="relative rounded-xl overflow-hidden border border-gray-100 bg-white shadow-sm galleryItem" data-path="${p.path}">
+            ${gallerySelectMode ? `
+              <label class="absolute top-2 left-2 z-10 w-6 h-6 rounded-md bg-white/90 flex items-center justify-center shadow cursor-pointer">
+                <input type="checkbox" class="gallerySelectCheckbox" ${gallerySelected.has(p.path) ? "checked" : ""}>
+              </label>` : ""}
+            ${p.isVideo
+              ? `<video src="${p.url}" muted playsinline class="w-full h-32 object-cover bg-black"></video>`
+              : `<img src="${p.url}" class="w-full h-32 object-cover galleryImg" data-url="${p.url}">`}
+            <button class="galleryDownloadBtn absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 shadow flex items-center justify-center text-[#009639] text-sm" title="Descarcă">⬇</button>
+          </div>`).join("")}
+      </div>`;
+
+  const floatingBar = gallerySelectMode ? `
+    <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 bg-[#0b1f3a] text-white rounded-full shadow-2xl px-5 py-3 flex items-center gap-3">
+      <span class="text-sm font-semibold">${gallerySelected.size} selectate</span>
+      <button id="galleryDownloadSelectedBtn" class="text-sm font-bold px-4 py-2 rounded-full transition-colors ${gallerySelected.size === 0 ? "bg-gray-500 cursor-not-allowed" : "bg-[#009639] hover:bg-[#007a2e]"}" ${gallerySelected.size === 0 ? "disabled" : ""}>⬇ Descarcă</button>
+    </div>` : "";
+
+  app.innerHTML = headerHtml("📸 Galerie foto", "Toate pozele echipelor", true) + toolbar + grid + floatingBar;
+  document.getElementById("backBtn").onclick = () => renderRoleSelect();
+
+  const uploadInput = document.getElementById("galleryUploadInput");
+  const uploadStatus = document.getElementById("galleryUploadStatus");
+  uploadInput.onchange = async () => {
+    const files = Array.from(uploadInput.files || []);
+    if (files.length === 0) return;
+    uploadStatus.textContent = `Se încarcă ${files.length} fișier(e)...`;
+    try {
+      await uploadGalleryFiles(files);
+      uploadStatus.textContent = "";
+      galleryPhotos = await fetchGalleryPhotos();
+      drawGallery();
+    } catch (e) {
+      console.error(e);
+      uploadStatus.textContent = "Eroare la încărcare — încearcă din nou.";
+    }
+  };
+
+  document.getElementById("gallerySelectToggle").onclick = () => {
+    gallerySelectMode = !gallerySelectMode;
+    if (!gallerySelectMode) gallerySelected = new Set();
+    drawGallery();
+  };
+
+  const selectAllBtn = document.getElementById("gallerySelectAllBtn");
+  if (selectAllBtn) {
+    selectAllBtn.onclick = () => {
+      if (gallerySelected.size === galleryPhotos.length) {
+        gallerySelected = new Set();
+      } else {
+        gallerySelected = new Set(galleryPhotos.map(p => p.path));
+      }
+      drawGallery();
+    };
+  }
+
+  document.querySelectorAll(".galleryItem").forEach(item => {
+    const path = item.dataset.path;
+    const photo = galleryPhotos.find(p => p.path === path);
+    const checkbox = item.querySelector(".gallerySelectCheckbox");
+    if (checkbox) {
+      checkbox.onchange = () => {
+        if (checkbox.checked) gallerySelected.add(path); else gallerySelected.delete(path);
+        drawGallery();
+      };
+    }
+    const downloadBtn = item.querySelector(".galleryDownloadBtn");
+    downloadBtn.onclick = async (e) => {
+      e.stopPropagation();
+      downloadBtn.textContent = "…";
+      try { await downloadFile(photo.url, photo.name); } catch (err) { console.error(err); }
+      downloadBtn.textContent = "⬇";
+    };
+    const img = item.querySelector(".galleryImg");
+    if (img && !gallerySelectMode) {
+      img.style.cursor = "zoom-in";
+      img.onclick = () => openLightbox(photo.url);
+    }
+  });
+
+  const downloadSelectedBtn = document.getElementById("galleryDownloadSelectedBtn");
+  if (downloadSelectedBtn) {
+    downloadSelectedBtn.onclick = async () => {
+      downloadSelectedBtn.disabled = true;
+      downloadSelectedBtn.textContent = "Se pregătește...";
+      try { await downloadSelectedGalleryPhotos(); } catch (e) { console.error(e); }
+      downloadSelectedBtn.disabled = gallerySelected.size === 0;
+      downloadSelectedBtn.textContent = "⬇ Descarcă";
+    };
+  }
+}
+
 // ---------- HELPERS ----------
 function headerHtml(title, subtitle, showBack, showLogoff) {
   return `
@@ -711,7 +916,15 @@ function renderRoleSelect() {
           <div class="text-sm text-gray-400">Indisponibil — competiția s-a încheiat</div>
         </div>
       </div>
+      <button id="roleGallery" class="flex items-center gap-4 p-5 rounded-2xl border-2 border-gray-200 hover:border-[#7a8c00] hover:shadow-md transition-all bg-white text-left mt-2">
+        <div class="w-12 h-12 rounded-full bg-[#f7fbe8] flex items-center justify-center text-[#7a8c00] text-xl">📸</div>
+        <div>
+          <div class="font-bold text-gray-800">Galerie foto</div>
+          <div class="text-sm text-gray-500">Vezi și descarcă toate pozele — poți încărca și altele noi</div>
+        </div>
+      </button>
     </div>`;
+  document.getElementById("roleGallery").onclick = () => renderGalleryScreen();
 }
 
 function renderLeaderboardPasswordGate() {
